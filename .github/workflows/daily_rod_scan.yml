@@ -56,7 +56,7 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
           NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
-          GITHUB_ISSUE_ALERTS: ${{ secrets.GITHUB_ISSUE_ALERTS }}
+          GITHUB_ISSUE_ALERTS: ${{ secrets.ISSUE_ALERTS || vars.ISSUE_ALERTS || 'true' }}
           ROD_EXTRA_GARDEN_URLS: ${{ secrets.ROD_EXTRA_GARDEN_URLS }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
