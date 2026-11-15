@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
+import sys
 import unittest
 from unittest.mock import patch
 import urllib.error
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rod_scanner.ai_scanner import (
     ai_enrich_and_filter_listings,
