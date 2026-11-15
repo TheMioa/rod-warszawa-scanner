@@ -1,0 +1,95 @@
+name: Daily Warsaw ROD Działki Scanner (Mokotów & Ochota)
+
+on:
+  schedule:
+    # Runs daily at 06:17 UTC (07:17 CET / 08:17 CEST).
+    # Off-minute schedule avoids GitHub Actions top-of-hour queue congestion.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      strict_districts_only:
+        description: 'Only keep high-confidence Mokotów & Ochota matches (exclude unassigned Warsaw)'
+        required: false
+        default: false
+        type: boolean
+      force_notify:
+        description: 'Send notifications even if 0 new listings (useful for testing Email/GitHub alerts)'
+        required: false
+        default: false
+        type: boolean
+      demo_fixture:
+        description: 'Use built-in demo fixture instead of live network scraping'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  scan-rod-listings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: pytest -q
+
+      - name: Run Warsaw ROD scanner
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
+          NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
+          GITHUB_ISSUE_ALERTS: ${{ secrets.GITHUB_ISSUE_ALERTS }}
+          ROD_EXTRA_GARDEN_URLS: ${{ secrets.ROD_EXTRA_GARDEN_URLS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INPUT_STRICT_DISTRICTS_ONLY: ${{ inputs.strict_districts_only }}
+          INPUT_FORCE_NOTIFY: ${{ inputs.force_notify }}
+          INPUT_DEMO_FIXTURE: ${{ inputs.demo_fixture }}
+        run: |
+          EXTRA_ARGS=()
+          if [ "${INPUT_STRICT_DISTRICTS_ONLY}" = "true" ]; then
+            EXTRA_ARGS+=("--strict-districts-only")
+          fi
+          if [ "${INPUT_FORCE_NOTIFY}" = "true" ]; then
+            EXTRA_ARGS+=("--force-notify")
+          fi
+          if [ "${INPUT_DEMO_FIXTURE}" = "true" ]; then
+            EXTRA_ARGS+=("--demo-fixture")
+          fi
+          python -m rod_scanner --state-file data/seen_listings.json --output-report data/latest_report.md "${EXTRA_ARGS[@]}"
+
+      - name: Upload scan report and state artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rod-scan-report
+          path: |
+            data/latest_report.md
+            data/seen_listings.json
+          if-no-files-found: ignore
+
+      - name: Commit and push updated state and report
+        if: ${{ inputs.demo_fixture != true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/seen_listings.json data/latest_report.md data/
+          git diff --cached --quiet || (git commit -m "chore(state): update seen ROD listings [skip ci]" && git push)
