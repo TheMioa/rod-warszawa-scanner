@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from rod_scanner.scrapers import (
+    DEFAULT_GARDEN_TARGETS,
     GratkaScraper,
     OLXScraper,
     OtodomScraper,
@@ -19,6 +20,7 @@ from rod_scanner.scrapers import (
     SprzedajemyScraper,
     fetch_all_listings,
     get_demo_listings,
+    is_individual_offer_url,
     parse_area_m2,
     parse_price_pln,
 )
@@ -107,6 +109,52 @@ class TestOLXScraper(unittest.TestCase):
         self.assertEqual(item.area_m2, 290.0)
         self.assertEqual(item.location_raw, "Warszawa, Mokotów")
 
+    def test_parse_olx_api_json(self) -> None:
+        api_payload = {
+            "data": [
+                {
+                    "id": 99887766,
+                    "url": "https://www.olx.pl/d/oferta/dzialka-rod-mokotow-odynca-CID3-IDZ9xyz.html",
+                    "title": "Działka ROD Mokotów ul. Odyńca 310 m²",
+                    "description": "<p>Zadbana działka rekreacyjna ROD z murowaną altaną.</p>",
+                    "params": [
+                        {
+                            "key": "price",
+                            "value": {
+                                "value": 94000,
+                                "currency": "PLN",
+                                "label": "94 000 zł",
+                            },
+                        },
+                        {
+                            "key": "m",
+                            "value": {"key": "310", "label": "310 m²"},
+                        },
+                    ],
+                    "location": {
+                        "city": {"name": "Warszawa"},
+                        "district": {"name": "Mokotów"},
+                    },
+                    "created_time": "2026-11-15T12:00:00+01:00",
+                },
+                {
+                    "id": 11111111,
+                    "url": "https://www.olx.pl/nieruchomosci/dzialki/sprzedaz/warszawa/",
+                    "title": "Działki na sprzedaż Warszawa",
+                },
+            ]
+        }
+        scraper = OLXScraper()
+        listings = scraper.parse_api_json(json.dumps(api_payload))
+        self.assertEqual(len(listings), 1)
+        first = listings[0]
+        self.assertEqual(first.id, "olx:99887766")
+        self.assertEqual(first.price_pln, 94000.0)
+        self.assertEqual(first.price_raw, "94 000 zł")
+        self.assertEqual(first.area_m2, 310.0)
+        self.assertEqual(first.location_raw, "Warszawa, Mokotów")
+        self.assertEqual(first.published_at, "2026-11-15T12:00:00+01:00")
+
 
 class TestOtodomScraper(unittest.TestCase):
     def test_parse_otodom_next_data(self) -> None:
@@ -173,6 +221,82 @@ class TestGratkaAndSprzedajemyScrapers(unittest.TestCase):
         self.assertEqual(listings[0].price_pln, 69000.0)
         self.assertEqual(listings[0].area_m2, 310.0)
         self.assertEqual(listings[0].location_raw, "Warszawa, Ochota")
+
+    def test_gratka_rejects_category_url_in_json_ld_and_cards(self) -> None:
+        html = """
+        <html><head>
+          <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "Place",
+            "name": "Działki rekreacyjne na sprzedaż Warszawa",
+            "url": "https://gratka.pl/nieruchomosci/dzialki-grunty/rekreacyjna/warszawa"
+          }
+          </script>
+        </head><body>
+          <article class="teaserUnified">
+            <h2><a href="https://gratka.pl/nieruchomosci/dzialki-grunty/rekreacyjna/warszawa">Działki rekreacyjne na sprzedaż Warszawa</a></h2>
+          </article>
+        </body></html>
+        """
+        scraper = GratkaScraper()
+        self.assertEqual(scraper.parse_html(html), [])
+
+    def test_is_individual_offer_url_filter(self) -> None:
+        self.assertFalse(
+            is_individual_offer_url(
+                "https://gratka.pl/nieruchomosci/dzialki-grunty/rekreacyjna/warszawa",
+                "gratka",
+            )
+        )
+        self.assertTrue(
+            is_individual_offer_url(
+                "https://gratka.pl/nieruchomosci/dzialka-rod-ochota/ob/334455",
+                "gratka",
+            )
+        )
+        self.assertTrue(
+            is_individual_offer_url(
+                "https://gratka.pl/nieruchomosci/dzialka-rod-mokotow/oi/998877",
+                "gratka",
+            )
+        )
+        self.assertFalse(
+            is_individual_offer_url(
+                "https://www.olx.pl/nieruchomosci/dzialki/sprzedaz/warszawa/?q=ROD",
+                "olx",
+            )
+        )
+        self.assertTrue(
+            is_individual_offer_url(
+                "https://www.olx.pl/d/oferta/dzialka-rod-mokotow-CID3-IDZ9abc.html",
+                "olx",
+            )
+        )
+        self.assertFalse(
+            is_individual_offer_url(
+                "https://www.otodom.pl/pl/wyniki/sprzedaz/dzialka,rekreacyjna/mazowieckie/warszawa/warszawa/warszawa",
+                "otodom",
+            )
+        )
+        self.assertTrue(
+            is_individual_offer_url(
+                "https://www.otodom.pl/pl/oferta/dzialka-rekreacyjna-rod-czerniakow-ID654321",
+                "otodom",
+            )
+        )
+        self.assertFalse(
+            is_individual_offer_url(
+                "https://sprzedajemy.pl/warszawa/nieruchomosci/dzialki-i-grunty?inp_text%5Bv%5D=ROD",
+                "sprzedajemy",
+            )
+        )
+        self.assertTrue(
+            is_individual_offer_url(
+                "https://sprzedajemy.pl/warszawa/dzialka-rod-siekierki-300m2-nr776655",
+                "sprzedajemy",
+            )
+        )
 
     def test_parse_sprzedajemy_html(self) -> None:
         html = """
@@ -249,6 +373,8 @@ class TestPZDAndRODGardensScrapers(unittest.TestCase):
         self.assertEqual(item.price_pln, 75000.0)
         self.assertEqual(item.area_m2, 300.0)
         self.assertIn("Mokotów", item.location_raw)
+        self.assertEqual(len(DEFAULT_GARDEN_TARGETS), 1)
+        self.assertEqual(DEFAULT_GARDEN_TARGETS[0].url, "https://rodobroncowpokoju.pl/")
 
 
 class TestFetchAllAndDemoListings(unittest.TestCase):

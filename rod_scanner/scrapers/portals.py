@@ -15,6 +15,11 @@ from typing import Any, Optional
 from rod_scanner.models import Listing
 
 try:
+    from curl_cffi import requests as _curl_requests  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    _curl_requests = None
+
+try:
     import requests as _requests  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
     _requests = None
@@ -27,19 +32,65 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_HEADERS: dict[str, str] = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 
+def is_individual_offer_url(url: str, source: str = "") -> bool:
+    """Return True only if URL points to a specific individual offer rather than a category/search index page."""
+    if not url or not url.strip():
+        return False
+    parsed = urllib.parse.urlparse(url.strip())
+    host = parsed.netloc.lower()
+    path = parsed.path
+    path_lower = path.lower()
+    src = (source or "").strip().lower()
+
+    if src == "gratka" or "gratka.pl" in host:
+        return bool(re.search(r"/(?:ob|oi)/\d+", path_lower))
+    if src == "olx" or "olx.pl" in host:
+        return ("/d/oferta/" in path_lower or "/oferta/" in path_lower) and bool(
+            re.search(r"id[a-z0-9]+", path_lower)
+        )
+    if src == "otodom" or "otodom.pl" in host:
+        return "/pl/oferta/" in path_lower or "/oferta/" in path_lower
+    if src == "sprzedajemy" or "sprzedajemy.pl" in host:
+        return bool(re.search(r"-nr\d+", path_lower))
+
+    return bool(path_lower and path_lower != "/")
+
+
 def fetch_url_text(url: str, timeout: int = 15, headers: Optional[dict[str, str]] = None) -> str:
-    """Fetch text content from a URL using requests if available, falling back to urllib.request."""
+    """Fetch text content from a URL using curl_cffi or requests if available, falling back to urllib.request."""
     merged_headers = dict(DEFAULT_HEADERS)
     if headers:
         merged_headers.update(headers)
+
+    if _curl_requests is not None:
+        try:
+            resp = _curl_requests.get(
+                url,
+                headers=merged_headers,
+                impersonate="chrome120",
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            return str(resp.text)
+        except Exception:
+            if _requests is None:
+                raise
 
     if _requests is not None:
         resp = _requests.get(url, headers=merged_headers, timeout=timeout)
@@ -241,6 +292,8 @@ def _extract_json_ld_listings(html: str, source: str, base_url: str) -> list[Lis
             if not title or not url:
                 continue
             full_url = urllib.parse.urljoin(base_url, url)
+            if not is_individual_offer_url(full_url, source):
+                continue
             description = strip_html_tags(str(item.get("description") or ""))
 
             price_pln: Optional[float] = None
@@ -319,6 +372,7 @@ class BasePortalScraper:
     search_urls: list[str] = []
 
     def __init__(self, search_urls: Optional[list[str]] = None) -> None:
+        self._custom_search_urls = search_urls is not None
         if search_urls is not None:
             self.search_urls = list(search_urls)
 
@@ -347,10 +401,173 @@ class OLXScraper(BasePortalScraper):
 
     source = "olx"
     base_url = "https://www.olx.pl"
+    api_urls = [
+        "https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=dzia%C5%82ka%20ROD%20Warszawa",
+        "https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=ogrodek%20dzialkowy%20Warszawa",
+    ]
     search_urls = [
         "https://www.olx.pl/nieruchomosci/dzialki/sprzedaz/warszawa/?q=ROD",
         "https://www.olx.pl/nieruchomosci/dzialki/warszawa/?q=ogrodek+dzialkowy",
     ]
+
+    def fetch_listings(self, timeout: int = 15) -> list[Listing]:
+        seen_ids: set[str] = set()
+        collected: list[Listing] = []
+        last_error: Optional[Exception] = None
+        any_succeeded = False
+
+        if not getattr(self, "_custom_search_urls", False):
+            for api_url in self.api_urls:
+                try:
+                    raw_json = fetch_url_text(
+                        api_url,
+                        timeout=timeout,
+                        headers={"Accept": "application/json"},
+                    )
+                    any_succeeded = True
+                    for listing in self.parse_api_json(raw_json):
+                        if listing.id not in seen_ids:
+                            seen_ids.add(listing.id)
+                            collected.append(listing)
+                except Exception as exc:
+                    last_error = exc
+
+        try:
+            for listing in super().fetch_listings(timeout=timeout):
+                any_succeeded = True
+                if listing.id not in seen_ids:
+                    seen_ids.add(listing.id)
+                    collected.append(listing)
+        except Exception as exc:
+            last_error = exc
+
+        if not any_succeeded and last_error is not None:
+            raise last_error
+        return collected
+
+    def parse_api_json(self, raw_json: str) -> list[Listing]:
+        """Parse OLX /api/v1/offers/ JSON response into Listing objects."""
+        if not raw_json or not raw_json.strip():
+            return []
+        try:
+            payload = json.loads(raw_json)
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(payload, dict):
+            return []
+
+        offers = payload.get("data")
+        if not isinstance(offers, list):
+            return []
+
+        by_id: dict[str, Listing] = {}
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+            title = str(offer.get("title") or "").strip()
+            raw_url = str(offer.get("url") or "").strip()
+            if not title or not raw_url:
+                continue
+            full_url = urllib.parse.urljoin(self.base_url, raw_url)
+            if not is_individual_offer_url(full_url, self.source):
+                continue
+
+            offer_id = str(offer.get("id") or _extract_slug_id(full_url))
+            listing_id = make_listing_id(self.source, offer_id)
+
+            price_pln: Optional[float] = None
+            price_raw: Optional[str] = None
+            area_m2: Optional[float] = None
+
+            params = offer.get("params")
+            if isinstance(params, list):
+                for param in params:
+                    if not isinstance(param, dict):
+                        continue
+                    key = str(param.get("key") or "").strip().lower()
+                    val = param.get("value")
+                    if key == "price":
+                        if isinstance(val, dict):
+                            raw_num = val.get("value")
+                            currency = str(val.get("currency") or "PLN").strip()
+                            label = str(val.get("label") or "").strip()
+                            if raw_num is not None:
+                                try:
+                                    price_pln = float(raw_num)
+                                except (TypeError, ValueError):
+                                    price_pln = None
+                            price_raw = label or (
+                                f"{int(price_pln)} {currency}" if price_pln is not None else None
+                            )
+                            if price_pln is None and price_raw:
+                                price_pln = parse_price_pln(price_raw)
+                        elif isinstance(val, (int, float)):
+                            price_pln = float(val)
+                            price_raw = f"{int(val)} zł"
+                        elif isinstance(val, str):
+                            price_raw = val.strip() or None
+                            price_pln = parse_price_pln(val)
+                    elif key == "m":
+                        if isinstance(val, dict):
+                            raw_area = val.get("key") or val.get("value") or val.get("label")
+                            if raw_area is not None:
+                                area_m2 = parse_area_m2(str(raw_area)) or parse_area_m2(
+                                    f"{raw_area} m2"
+                                )
+                        elif val is not None:
+                            area_m2 = parse_area_m2(str(val)) or parse_area_m2(f"{val} m2")
+
+            loc = offer.get("location")
+            location_parts: list[str] = []
+            if isinstance(loc, dict):
+                city_node = loc.get("city")
+                district_node = loc.get("district")
+                city_name = (
+                    city_node.get("name")
+                    if isinstance(city_node, dict)
+                    else loc.get("cityName")
+                )
+                district_name = (
+                    district_node.get("name")
+                    if isinstance(district_node, dict)
+                    else loc.get("districtName")
+                )
+                if city_name:
+                    location_parts.append(str(city_name).strip())
+                if district_name:
+                    location_parts.append(str(district_name).strip())
+            location_raw = ", ".join(p for p in location_parts if p)
+
+            description = strip_html_tags(str(offer.get("description") or ""))
+            if area_m2 is None:
+                area_m2 = parse_area_m2(f"{title} {description}")
+            if price_pln is None:
+                price_pln = parse_price_pln(f"{title} {description}")
+
+            published_at = (
+                str(
+                    offer.get("created_time")
+                    or offer.get("last_refresh_time")
+                    or offer.get("createdTime")
+                    or ""
+                ).strip()
+                or None
+            )
+
+            if listing_id not in by_id:
+                by_id[listing_id] = Listing(
+                    id=listing_id,
+                    source=self.source,
+                    title=title,
+                    url=full_url,
+                    price_pln=price_pln,
+                    price_raw=price_raw,
+                    area_m2=area_m2,
+                    location_raw=location_raw,
+                    description_snippet=description[:300],
+                    published_at=published_at,
+                )
+        return list(by_id.values())
 
     def parse_html(self, html: str, base_url: Optional[str] = None) -> list[Listing]:
         root_url = base_url or self.base_url
@@ -358,16 +575,17 @@ class OLXScraper(BasePortalScraper):
 
         # 1. Try window.__PRERENDERED_STATE__ JSON extraction
         for listing in self._parse_prerendered_state(html, root_url):
-            by_id[listing.id] = listing
+            if is_individual_offer_url(listing.url, self.source):
+                by_id[listing.id] = listing
 
         # 2. Try HTML card extraction (<div data-cy="l-card"> or <div data-testid="l-card">)
         for listing in self._parse_cards(html, root_url):
-            if listing.id not in by_id:
+            if listing.id not in by_id and is_individual_offer_url(listing.url, self.source):
                 by_id[listing.id] = listing
 
         # 3. Try JSON-LD extraction
         for listing in _extract_json_ld_listings(html, self.source, root_url):
-            if listing.id not in by_id:
+            if listing.id not in by_id and is_individual_offer_url(listing.url, self.source):
                 by_id[listing.id] = listing
 
         return list(by_id.values())
@@ -640,7 +858,7 @@ def _extract_slug_id(url: str) -> str:
     otodom_match = re.search(r"-ID([A-Za-z0-9]+)(?:$|[/?#])", url)
     if otodom_match:
         return otodom_match.group(1)
-    gratka_match = re.search(r"/ob/(\d+)", url)
+    gratka_match = re.search(r"/(?:ob|oi)/(\d+)", url)
     if gratka_match:
         return gratka_match.group(1)
     sprzedajemy_match = re.search(r"-nr(\d+)", url)
@@ -664,16 +882,17 @@ class OtodomScraper(BasePortalScraper):
 
         # 1. Parse <script id="__NEXT_DATA__"> JSON
         for listing in self._parse_next_data(html, root_url):
-            by_id[listing.id] = listing
+            if is_individual_offer_url(listing.url, self.source):
+                by_id[listing.id] = listing
 
         # 2. Parse HTML article cards fallback
         for listing in self._parse_article_cards(html, root_url):
-            if listing.id not in by_id:
+            if listing.id not in by_id and is_individual_offer_url(listing.url, self.source):
                 by_id[listing.id] = listing
 
         # 3. Parse JSON-LD fallback
         for listing in _extract_json_ld_listings(html, self.source, root_url):
-            if listing.id not in by_id:
+            if listing.id not in by_id and is_individual_offer_url(listing.url, self.source):
                 by_id[listing.id] = listing
 
         return list(by_id.values())
@@ -875,7 +1094,8 @@ class GratkaScraper(BasePortalScraper):
         by_id: dict[str, Listing] = {}
 
         for listing in _extract_json_ld_listings(html, self.source, root_url):
-            by_id[listing.id] = listing
+            if is_individual_offer_url(listing.url, self.source):
+                by_id[listing.id] = listing
 
         card_pattern = re.compile(
             r"<article\b[^>]*>(.*?)</article>|<div\b[^>]*class=[\"'][^\"']*(?:teaserUnified|property-card|listing-card)[^\"']*[\"'][^>]*>(.*?)</div>\s*</div>",
@@ -887,6 +1107,8 @@ class GratkaScraper(BasePortalScraper):
             if not href_m:
                 continue
             full_url = urllib.parse.urljoin(root_url, html_lib.unescape(href_m.group(1)))
+            if not is_individual_offer_url(full_url, self.source):
+                continue
 
             title_m = re.search(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", block, re.I | re.DOTALL)
             if not title_m:
@@ -941,7 +1163,8 @@ class SprzedajemyScraper(BasePortalScraper):
         by_id: dict[str, Listing] = {}
 
         for listing in _extract_json_ld_listings(html, self.source, root_url):
-            by_id[listing.id] = listing
+            if is_individual_offer_url(listing.url, self.source):
+                by_id[listing.id] = listing
 
         card_pattern = re.compile(
             r"<(?:article|li)\b[^>]*class=[\"'][^\"']*(?:element|offer-item|offerCard|cnt)[^\"']*[\"'][^>]*>(.*?)</(?:article|li)>|<article\b[^>]*>(.*?)</article>",
@@ -953,6 +1176,8 @@ class SprzedajemyScraper(BasePortalScraper):
             if not href_m:
                 continue
             full_url = urllib.parse.urljoin(root_url, html_lib.unescape(href_m.group(1)))
+            if not is_individual_offer_url(full_url, self.source):
+                continue
 
             title_m = re.search(r"<h[1-6]\b[^>]*>(.*?)</h[1-6]>", block, re.I | re.DOTALL)
             title = strip_html_tags(title_m.group(1)) if title_m else ""

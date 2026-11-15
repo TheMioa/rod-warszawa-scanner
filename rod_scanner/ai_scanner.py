@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 
 from .matcher import _is_document_or_admin_notice, classify_listing, filter_listings
 from .models import Listing
+from .scrapers.portals import is_individual_offer_url
 
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 DEFAULT_GITHUB_MODEL = "openai/gpt-4o-mini"
@@ -515,13 +516,13 @@ def _is_relevant_portal_or_rod_url(url: str) -> bool:
         return False
 
     if "olx.pl" in host:
-        return "/d/oferta/" in path or "/oferta/" in path
+        return is_individual_offer_url(url, "olx")
     if "otodom.pl" in host:
-        return "/oferta/" in path
+        return is_individual_offer_url(url, "otodom")
     if "gratka.pl" in host:
-        return "/nieruchomosci/" in path and path.count("/") >= 2
+        return is_individual_offer_url(url, "gratka")
     if "sprzedajemy.pl" in host:
-        return len(path.strip("/")) > 10 and "nr" in path
+        return is_individual_offer_url(url, "sprzedajemy")
     if "morizon.pl" in host or "nieruchomosci-online.pl" in host:
         return len(path.strip("/")) > 8
     if "pzd.pl" in host or "rod" in host:

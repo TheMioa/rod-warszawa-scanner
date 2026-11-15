@@ -218,36 +218,6 @@ DEFAULT_GARDEN_TARGETS: tuple[GardenTarget, ...] = (
         url="https://rodobroncowpokoju.pl/",
         street_hint="ul. Odyńca / al. Niepodległości",
     ),
-    GardenTarget(
-        name="ROD Rakowiec",
-        district="Warszawa, Mokotów",
-        url="https://rodrakowiec.pl/",
-        street_hint="ul. Rostafińskich, Pole Mokotowskie",
-    ),
-    GardenTarget(
-        name="ROD Fort Szczęśliwice",
-        district="Warszawa, Ochota",
-        url="https://rodfortszczesliwice.pl/",
-        street_hint="ul. Drawska / Szczęśliwice",
-    ),
-    GardenTarget(
-        name="ROD im. Żwirki i Wigury",
-        district="Warszawa, Ochota",
-        url="https://rodzwirkiiwigury.pl/",
-        street_hint="ul. Żwirki i Wigury / Księcia Trojdena",
-    ),
-    GardenTarget(
-        name="ROD Czerniaków",
-        district="Warszawa, Mokotów",
-        url="https://rodczerniakow.pl/",
-        street_hint="ul. Bernardyńska / Czerniakowska",
-    ),
-    GardenTarget(
-        name="ROD Siekierki",
-        district="Warszawa, Mokotów",
-        url="https://rodsiekierki.pl/",
-        street_hint="ul. Bartycka / Bluszczańska",
-    ),
 )
 
 
@@ -404,10 +374,10 @@ class PZDMazowieckiScraper:
     """Scraper for PZD Okręg Mazowiecki announcements and plot availability notices."""
 
     source = "pzd_mazowiecki"
-    base_url = "http://mazowiecki.pzd.pl"
+    base_url = "https://mazowiecki.pzd.pl"
     search_urls = [
-        "http://mazowiecki.pzd.pl/",
-        "http://mazowiecki.pzd.pl/komunikaty/",
+        "https://mazowiecki.pzd.pl/",
+        "https://mazowiecki.pzd.pl/aktualnosci/",
     ]
 
     def __init__(self, search_urls: Optional[list[str]] = None) -> None:
@@ -417,12 +387,20 @@ class PZDMazowieckiScraper:
     def fetch_listings(self, timeout: int = 15) -> list[Listing]:
         seen_ids: set[str] = set()
         results: list[Listing] = []
+        last_error: Optional[Exception] = None
+        any_succeeded = False
         for url in self.search_urls:
-            html = fetch_url_text(url, timeout=timeout)
-            for listing in self.parse_html(html, base_url=url):
-                if listing.id not in seen_ids:
-                    seen_ids.add(listing.id)
-                    results.append(listing)
+            try:
+                html = fetch_url_text(url, timeout=timeout)
+                any_succeeded = True
+                for listing in self.parse_html(html, base_url=url):
+                    if listing.id not in seen_ids:
+                        seen_ids.add(listing.id)
+                        results.append(listing)
+            except Exception as exc:
+                last_error = exc
+        if not any_succeeded and last_error is not None:
+            raise last_error
         return results
 
     def parse_html(
