@@ -202,6 +202,13 @@ class TestPZDAndRODGardensScrapers(unittest.TestCase):
             <p>Okręgowy Zarząd Mazowiecki PZD informuje o możliwości nabycia praw do działki ROD.</p>
           </article>
           <article class="post">
+            <h2><a href="http://mazowiecki.pzd.pl/wp-content/uploads/2025/05/wzor-umowy-przeniesienia-praw-do-dzialki.pdf">Wzór umowy przeniesienia praw do działki ROD</a></h2>
+            <p>Dokumenty i wzory wniosków PZD dla działkowców.</p>
+          </article>
+          <article class="post">
+            <h2><a href="http://mazowiecki.pzd.pl/2025/05/uchwala-ws-oplat-ogrodowych/">Uchwała ws. opłat ogrodowych i składek PZD w ROD</a></h2>
+          </article>
+          <article class="post">
             <h2><a href="http://mazowiecki.pzd.pl/kontakt">Kontakt</a></h2>
           </article>
         </body></html>

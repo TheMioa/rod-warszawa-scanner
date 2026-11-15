@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 from pathlib import Path
@@ -20,11 +21,16 @@ from rod_scanner.notifiers import (
     send_github_issue,
     write_github_step_summary,
 )
-from rod_scanner.state import StateStore
+from rod_scanner.state import (
+    HISTORY_CSV_COLUMNS,
+    StateStore,
+    append_run_log,
+    save_daily_snapshot,
+)
 
 
 class TestStateStore(unittest.TestCase):
-    """Tests for StateStore diffing, deduplication, price drops, persistence, and pruning."""
+    """Tests for StateStore diffing, deduplication, price drops, digest queueing, persistence, and history exports."""
 
     def _sample_listings(self) -> list[Listing]:
         return [
@@ -34,10 +40,14 @@ class TestStateStore(unittest.TestCase):
                 title="Działka ROD Obrońców Pokoju Odyńca Mokotów",
                 url="https://www.olx.pl/d/oferta/101",
                 price_pln=90000.0,
+                price_raw="90 000 PLN",
                 area_m2=300.0,
                 location_raw="Warszawa, Mokotów",
+                description_snippet="Murowana altana, prąd, woda",
+                published_at="2026-05-01",
                 district_match="mokotow",
                 matched_garden="ROD im. Obrońców Pokoju",
+                match_reason="Matched Mokotów garden 'ROD im. Obrońców Pokoju'",
             ),
             Listing(
                 id="otodom:202",
@@ -45,10 +55,14 @@ class TestStateStore(unittest.TestCase):
                 title="Ogródek działkowy ROD Fort Szczęśliwice",
                 url="https://www.otodom.pl/pl/oferta/202",
                 price_pln=75000.0,
+                price_raw="75 000 PLN",
                 area_m2=250.0,
                 location_raw="Warszawa, Ochota",
+                description_snippet="Cicha alejka przy Parku Szczęśliwickim",
+                published_at="2026-05-01",
                 district_match="ochota",
                 matched_garden="ROD Fort Szczęśliwice",
+                match_reason="Matched Ochota garden 'ROD Fort Szczęśliwice'",
             ),
         ]
 
@@ -66,8 +80,15 @@ class TestStateStore(unittest.TestCase):
             self.assertIn("olx:101", store)
             self.assertEqual(store["olx:101"]["first_seen_at"], "2026-05-01T08:00:00+00:00")
             self.assertEqual(store["olx:101"]["last_seen_at"], "2026-05-01T08:00:00+00:00")
+            self.assertEqual(store["olx:101"]["times_seen"], 1)
+            self.assertEqual(store["olx:101"]["notified_at"], "2026-05-01T08:00:00+00:00")
+            self.assertEqual(store["olx:101"]["last_notified_price_pln"], 90000.0)
+            self.assertEqual(
+                store["olx:101"]["price_history"],
+                [{"timestamp": "2026-05-01T08:00:00+00:00", "price_pln": 90000.0}],
+            )
 
-            # Second run with identical listings -> 0 new, 0 drops, updated last_seen_at
+            # Second run with identical listings -> 0 new, 0 drops, updated last_seen_at & times_seen
             new_second, drops_second = store.diff_and_update(
                 listings, now_iso="2026-05-02T08:00:00+00:00"
             )
@@ -75,6 +96,8 @@ class TestStateStore(unittest.TestCase):
             self.assertEqual(len(drops_second), 0)
             self.assertEqual(store["olx:101"]["first_seen_at"], "2026-05-01T08:00:00+00:00")
             self.assertEqual(store["olx:101"]["last_seen_at"], "2026-05-02T08:00:00+00:00")
+            self.assertEqual(store["olx:101"]["times_seen"], 2)
+            self.assertEqual(len(store["olx:101"]["price_history"]), 1)
 
     def test_price_drop_detection_and_ignore_price_increase(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -116,6 +139,167 @@ class TestStateStore(unittest.TestCase):
             self.assertEqual(prev_price, 90000.0)
             self.assertEqual(dropped_listing.price_pln, 81000.0)
             self.assertEqual(store["olx:101"]["price_pln"], 81000.0)
+            self.assertEqual(len(store["olx:101"]["price_history"]), 2)
+            self.assertEqual(store["olx:101"]["price_history"][-1]["price_pln"], 81000.0)
+
+    def test_scan_only_pending_digest_and_mark_digest_sent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "seen_listings.json"
+            store = StateStore(state_path)
+
+            # 04:00 scan-only run discovers an unassigned listing and a Mokotów listing
+            scan_1 = [
+                Listing(
+                    id="sprzedajemy:303",
+                    source="sprzedajemy",
+                    title="Działka ROD Warszawa",
+                    url="https://sprzedajemy.pl/303",
+                    price_pln=65000.0,
+                    area_m2=320.0,
+                    district_match="warszawa_unassigned",
+                ),
+                self._sample_listings()[0],  # olx:101 (Mokotów, 90000 PLN)
+            ]
+            store.diff_and_update(
+                scan_1,
+                now_iso="2026-05-10T02:00:00+00:00",
+                mark_notified=False,
+            )
+            self.assertIsNone(store["olx:101"]["notified_at"])
+            self.assertIsNone(store["olx:101"]["last_notified_price_pln"])
+
+            # Pending items are returned sorted with Mokotów/Ochota first
+            pending_new, pending_drops = store.get_pending_digest_items()
+            self.assertEqual([item.id for item in pending_new], ["olx:101", "sprzedajemy:303"])
+            self.assertEqual(len(pending_drops), 0)
+
+            # 10:00 AM digest run sends notification and marks digest sent
+            store.mark_digest_sent(
+                pending_new,
+                pending_drops,
+                now_iso="2026-05-10T08:00:00+00:00",
+            )
+            self.assertEqual(store["olx:101"]["notified_at"], "2026-05-10T08:00:00+00:00")
+            self.assertEqual(store["olx:101"]["last_notified_price_pln"], 90000.0)
+
+            # Immediately after marking sent, pending queue is empty
+            after_new, after_drops = store.get_pending_digest_items()
+            self.assertEqual(len(after_new), 0)
+            self.assertEqual(len(after_drops), 0)
+
+            # 16:00 scan-only run sees a price drop on olx:101 (90000 -> 82000) and a new Ochota listing
+            dropped_olx = Listing(
+                id="olx:101",
+                source="olx",
+                title="Działka ROD Obrońców Pokoju Odyńca Mokotów",
+                url="https://www.olx.pl/d/oferta/101",
+                price_pln=82000.0,
+                area_m2=300.0,
+                district_match="mokotow",
+                matched_garden="ROD im. Obrońców Pokoju",
+            )
+            ochota_item = self._sample_listings()[1]
+            store.diff_and_update(
+                [dropped_olx, ochota_item],
+                now_iso="2026-05-10T14:00:00+00:00",
+                mark_notified=False,
+            )
+            # last_notified_price_pln remains 90000.0 until the next digest is sent
+            self.assertEqual(store["olx:101"]["last_notified_price_pln"], 90000.0)
+            self.assertIsNone(store["otodom:202"]["notified_at"])
+
+            # Next 10:00 AM digest picks up both the new Ochota listing and the price drop on olx:101
+            next_new, next_drops = store.get_pending_digest_items()
+            self.assertEqual([item.id for item in next_new], ["otodom:202"])
+            self.assertEqual(len(next_drops), 1)
+            self.assertEqual(next_drops[0][0].id, "olx:101")
+            self.assertEqual(next_drops[0][0].price_pln, 82000.0)
+            self.assertEqual(next_drops[0][1], 90000.0)
+
+            store.mark_digest_sent(
+                next_new,
+                next_drops,
+                now_iso="2026-05-11T08:00:00+00:00",
+            )
+            self.assertEqual(store["olx:101"]["last_notified_price_pln"], 82000.0)
+            self.assertEqual(store["otodom:202"]["notified_at"], "2026-05-11T08:00:00+00:00")
+            final_new, final_drops = store.get_pending_digest_items()
+            self.assertEqual(len(final_new), 0)
+            self.assertEqual(len(final_drops), 0)
+
+    def test_export_history_csv_append_run_log_and_save_daily_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            state_path = tmp_path / "seen_listings.json"
+            history_dir = tmp_path / "history"
+            csv_path = history_dir / "listings_history.csv"
+            log_path = history_dir / "runs_log.jsonl"
+
+            store = StateStore(state_path)
+            listings = self._sample_listings()
+            store.diff_and_update([listings[0]], now_iso="2026-05-01T08:00:00+00:00")
+            store.diff_and_update([listings[1]], now_iso="2026-05-02T08:00:00+00:00")
+
+            # Trigger a price drop on olx:101 so price_changes == 1 and times_seen == 2
+            dropped = Listing(
+                id="olx:101",
+                source="olx",
+                title="Działka ROD Obrońców Pokoju Odyńca Mokotów",
+                url="https://www.olx.pl/d/oferta/101",
+                price_pln=84000.0,
+                area_m2=300.0,
+                location_raw="Warszawa, Mokotów",
+                district_match="mokotow",
+                matched_garden="ROD im. Obrońców Pokoju",
+            )
+            store.diff_and_update([dropped], now_iso="2026-05-03T08:00:00+00:00")
+
+            written_csv = store.export_history_csv(csv_path)
+            self.assertTrue(written_csv.exists())
+            with written_csv.open("r", encoding="utf-8", newline="") as fh:
+                reader = csv.DictReader(fh)
+                self.assertEqual(tuple(reader.fieldnames or ()), HISTORY_CSV_COLUMNS)
+                rows = list(reader)
+
+            # Sorted by first_seen_at descending -> otodom:202 (May 2) before olx:101 (May 1)
+            self.assertEqual([r["id"] for r in rows], ["otodom:202", "olx:101"])
+            self.assertEqual(rows[1]["times_seen"], "2")
+            self.assertEqual(rows[1]["price_changes"], "1")
+            self.assertEqual(rows[1]["price_per_m2"], "280.0")
+
+            # Test append_run_log
+            written_log = append_run_log(
+                {
+                    "timestamp": "2026-05-03T10:00:00+00:00",
+                    "mode": "digest",
+                    "total_scanned": 14,
+                    "new_count": 2,
+                    "price_drops_count": 1,
+                    "sources_scanned": ["olx", "otodom"],
+                    "warnings": ["gratka timeout"],
+                },
+                log_path=log_path,
+            )
+            self.assertTrue(written_log.exists())
+            lines = written_log.read_text(encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(lines), 1)
+            log_entry = json.loads(lines[0])
+            self.assertEqual(log_entry["mode"], "digest")
+            self.assertEqual(log_entry["total_scanned"], 14)
+            self.assertEqual(log_entry["new_count"], 2)
+            self.assertEqual(log_entry["price_drops_count"], 1)
+            self.assertEqual(log_entry["sources_scanned"], ["olx", "otodom"])
+            self.assertEqual(log_entry["warnings_count"], 1)
+
+            # Test save_daily_snapshot
+            snapshot_path = save_daily_snapshot(
+                "# Daily ROD Report\n\nContent here.",
+                history_dir=history_dir,
+                now_iso="2026-05-03T10:00:00+00:00",
+            )
+            self.assertEqual(snapshot_path, history_dir / "2026-05" / "2026-05-03.md")
+            self.assertTrue(snapshot_path.exists())
+            self.assertIn("# Daily ROD Report", snapshot_path.read_text(encoding="utf-8"))
 
     def test_json_persistence_save_and_reload(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -226,11 +410,11 @@ class TestNotifiers(unittest.TestCase):
         self.assertIn("[MOKOTÓW]", report)
         self.assertIn("[OCHOTA]", report)
         self.assertIn("ROD im. Obrońców Pokoju", report)
-        self.assertIn("90 000 PLN", report)
+        self.assertIn("90,000 PLN", report)
         self.assertIn("300 PLN/m²", report)
         self.assertIn("320 PLN/m²", report)
         self.assertIn("Price Drops on Previously Seen Listings", report)
-        self.assertIn("80 000 PLN -> 70 000 PLN (-12.5%)", report)
+        self.assertIn("80,000 PLN -> 70,000 PLN (-12.5%)", report)
         self.assertIn("Unassigned Warsaw Listings (Verify if Mokotów/Ochota)", report)
         self.assertIn("https://gratka.pl/oferta/3", report)
         self.assertIn("gratka timeout on page 2", report)
@@ -256,7 +440,7 @@ class TestNotifiers(unittest.TestCase):
 
         ok = send_email(
             subject="ROD Alert",
-            report_text="Treść raportu",
+            report_text="Report body content",
             smtp_config={
                 "host": "smtp.example.com",
                 "port": 587,

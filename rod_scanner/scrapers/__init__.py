@@ -123,7 +123,7 @@ def get_demo_listings() -> list[Listing]:
             title="Działka rekreacyjna ROD im. Obrońców Pokoju 300 m² Warszawa Mokotów (ul. Odyńca)",
             url="https://www.olx.pl/d/oferta/dzialka-rod-obroncow-pokoju-mokotow-CID3-IDdemo1.html",
             price_pln=95000.0,
-            price_raw="95 000 zł",
+            price_raw="95 000 PLN",
             area_m2=300.0,
             location_raw="Warszawa, Mokotów",
             description_snippet=(
@@ -153,7 +153,7 @@ def get_demo_listings() -> list[Listing]:
             title="Działka ROD Fort Szczęśliwice 320 m² Warszawa Ochota ul. Drawska",
             url="https://gratka.pl/nieruchomosci/dzialka-rod-fort-szczesliwice-ochota/ob/99001",
             price_pln=88000.0,
-            price_raw="88 000 zł",
+            price_raw="88 000 PLN",
             area_m2=320.0,
             location_raw="Warszawa, Ochota, Szczęśliwice",
             description_snippet=(
@@ -168,7 +168,7 @@ def get_demo_listings() -> list[Listing]:
             title="[ROD im. Żwirki i Wigury] Ogłoszenie zarządu: wolna działka nr 142 (280 m²)",
             url="https://rodzwirkiiwigury.pl/ogloszenia/wolna-dzialka-142",
             price_pln=64000.0,
-            price_raw="64 000 zł",
+            price_raw="64 000 PLN",
             area_m2=280.0,
             location_raw="Warszawa, Ochota, ROD im. Żwirki i Wigury, ul. Żwirki i Wigury",
             description_snippet=(
@@ -183,9 +183,9 @@ def get_demo_listings() -> list[Listing]:
             title="Komunikat Okręgowego Zarządu Mazowieckiego PZD ws. wolnych działek ROD w Warszawie (Mokotów i Ochota)",
             url="http://mazowiecki.pzd.pl/komunikaty/wolne-dzialki-warszawa-2025",
             price_pln=None,
-            price_raw=None,
+            price_raw="Price not listed",
             area_m2=300.0,
-            location_raw="Warszawa, Okręg Mazowiecki PZD (Mokotów)",
+            location_raw="Warszawa, Mokotów (PZD Masovian District)",
             description_snippet=(
                 "Wykaz wolnych działek rodzinnych zgłoszonych przez zarządy ROD na terenie dzielnic "
                 "Mokotów (ROD Rakowiec) oraz Ochota."
@@ -198,9 +198,9 @@ def get_demo_listings() -> list[Listing]:
             title="Działka ROD 400 m² Warszawa z altaną murowaną i prądem",
             url="https://sprzedajemy.pl/dzialka-rod-400m2-warszawa-altana-nr881122",
             price_pln=72000.0,
-            price_raw="72 000 zł",
+            price_raw="72 000 PLN",
             area_m2=400.0,
-            location_raw="Warszawa, mazowieckie",
+            location_raw="Warszawa, Masovian Voivodeship",
             description_snippet=(
                 "Odstąpię piękną działkę rekreacyjną ROD w Warszawie (blisko centrum, dogodny dojazd ZTM). "
                 "Powierzchnia 400 m², pełne uzbrojenie, brak dokładnej dzielnicy w opisie."
@@ -213,7 +213,7 @@ def get_demo_listings() -> list[Listing]:
             title="Działka rekreacyjna ROD 350 m² Warszawa Białołęka / Tarchomin",
             url="https://www.olx.pl/d/oferta/dzialka-rod-bialoleka-CID3-IDdemoExcluded.html",
             price_pln=55000.0,
-            price_raw="55 000 zł",
+            price_raw="55 000 PLN",
             area_m2=350.0,
             location_raw="Warszawa, Białołęka",
             description_snippet=(

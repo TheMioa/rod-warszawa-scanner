@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from typing import Optional
+import urllib.parse
 
 from .models import Listing
 
@@ -317,6 +318,141 @@ _NON_ROD_NEGATIVE_PATTERNS: list[re.Pattern[str]] = [
 
 _WARSAW_PATTERN = re.compile(r"\b(?:warszaw\w*|w-wa|wwa)\b")
 
+_DOCUMENT_EXTENSIONS: tuple[str, ...] = (
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".zip",
+    ".rtf",
+)
+
+_DOCUMENT_URL_PATHS: tuple[str, ...] = (
+    "/wp-content/uploads/",
+    "/dokumenty/",
+    "/pliki/",
+    "/wzory/",
+    "/prawo/",
+    "/ustawa/",
+    "/statut/",
+    "/regulamin/",
+)
+
+_EXPLICIT_PLOT_OFFER_PHRASES: tuple[str, ...] = (
+    "wolna działka",
+    "wolna dzialka",
+    "wolne działki",
+    "wolne dzialki",
+    "wolnych działek",
+    "wolnych dzialek",
+    "wolnych działkach",
+    "wolnych dzialkach",
+    "wykaz wolnych",
+    "sprzedam działk",
+    "sprzedam dzialk",
+    "odstąpię działk",
+    "odstapie dzialk",
+    "odstąpię prawo",
+    "odstapie prawo",
+)
+
+_ADMIN_OR_DOCUMENT_TITLE_KEYWORDS: tuple[str, ...] = (
+    "ustawa",
+    "statut",
+    "regulamin",
+    "uchwała",
+    "uchwala",
+    "zarządzenie",
+    "zarzadzenie",
+    "wzór",
+    "wzor",
+    "wniosek",
+    "deklaracja",
+    "umowa",
+    "opłaty",
+    "oplaty",
+    "składki",
+    "skladki",
+    "walne zebranie",
+    "zebranie",
+    "komunikat dotyczący",
+    "komunikat dotyczacy",
+    "wod",
+    "prąd",
+    "prad",
+    "śmieci",
+    "smieci",
+    "odpad",
+    "harmonogram",
+    "dyżur",
+    "dyzur",
+    "szkoleni",
+    "konkurs",
+    "instrukcj",
+    "zasady",
+    "informacja o",
+    "poradnik",
+    "jak kupić",
+    "jak kupic",
+    "jak nabyć",
+    "jak nabyc",
+)
+
+_UTILITY_NOTICE_KEYWORDS: tuple[str, ...] = (
+    "wod",
+    "prąd",
+    "prad",
+)
+
+_PZD_ACTIVE_OFFER_KEYWORDS: tuple[str, ...] = (
+    "wolna dzialk",
+    "wolne dzialk",
+    "wolnych dzial",
+    "wykaz wolnych",
+    "sprzedam dzialk",
+    "sprzedaz dzialk",
+    "na sprzedaz",
+    "odstapie dzialk",
+    "odstapie prawo",
+    "przetarg",
+    "nabor na",
+    "przydzial dzialk",
+    "nowy ogrod",
+    "nowe dzialk",
+)
+
+
+def _is_document_or_admin_notice(title: str, url: str) -> bool:
+    """Return True if the URL or title indicates a static document, bylaw, form template, or admin notice."""
+    raw_url = (url or "").strip().lower()
+    if raw_url:
+        parsed_path = urllib.parse.urlparse(raw_url).path.lower()
+        if any(parsed_path.endswith(ext) for ext in _DOCUMENT_EXTENSIONS):
+            return True
+        if any(seg in raw_url for seg in _DOCUMENT_URL_PATHS):
+            return True
+
+    low_title = (title or "").strip().lower()
+    if not low_title:
+        return False
+
+    if any(phrase in low_title for phrase in _EXPLICIT_PLOT_OFFER_PHRASES):
+        return False
+
+    for kw in _ADMIN_OR_DOCUMENT_TITLE_KEYWORDS:
+        if kw in _UTILITY_NOTICE_KEYWORDS:
+            has_plot_and_size = (
+                ("działk" in low_title or "dzialk" in low_title or "allotment" in low_title)
+                and bool(re.search(r"\b\d{2,4}\s*m(?:2|²)\b", low_title))
+            )
+            if has_plot_and_size:
+                continue
+        if kw in low_title:
+            return True
+
+    return False
+
 
 def _contains_keyword(normalized_text: str, keyword: str) -> bool:
     """Match keyword on word boundaries inside normalized_text."""
@@ -344,14 +480,17 @@ def _has_explicit_rod_marker(normalized_text: str) -> bool:
 
 
 def is_rod_related(listing: Listing) -> bool:
-    """Verify the listing is about a ROD / działka rekreacyjna / ogródek działkowy / PZD."""
-    if listing.source in ("pzd_mazowiecki", "rod_garden"):
-        return True
+    """Verify the listing is about an actual ROD plot for sale/allocation and not a document/admin notice."""
+    if _is_document_or_admin_notice(listing.title, listing.url):
+        return False
 
     title_norm = normalize_text(listing.title)
     desc_norm = normalize_text(listing.description_snippet)
     loc_norm = normalize_text(listing.location_raw)
     combined = f"{title_norm} {desc_norm} {loc_norm}".strip()
+
+    if listing.source in ("pzd_mazowiecki", "rod_garden"):
+        return any(kw in combined for kw in _PZD_ACTIVE_OFFER_KEYWORDS)
 
     has_strong_rod_in_title = _has_explicit_rod_marker(title_norm)
     has_strong_rod_anywhere = _has_explicit_rod_marker(combined)

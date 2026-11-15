@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from email.message import EmailMessage
+import html
 import json
 import os
 from pathlib import Path
@@ -19,34 +20,84 @@ USER_AGENT = "rod-warszawa-scanner/1.0 (+https://github.com)"
 
 
 def _format_price_pln(price_pln: Optional[float], price_raw: Optional[str] = None) -> str:
-    """Format a numeric PLN price consistently, falling back to raw price text."""
+    """Format a numeric PLN price consistently with commas, falling back to raw price text."""
     if price_pln is not None:
         rounded = int(round(price_pln))
-        formatted_num = f"{rounded:,}".replace(",", " ")
-        return f"{formatted_num} PLN"
+        return f"{rounded:,} PLN"
     if price_raw:
-        return price_raw.strip()
-    return "cena nieznana"
+        cleaned = price_raw.strip()
+        if cleaned and cleaned.lower() not in ("cena nieznana", "brak ceny"):
+            return cleaned
+    return "Price not listed"
 
 
 def _format_unit_price(price_pln: Optional[float], area_m2: Optional[float]) -> Optional[str]:
     """Calculate and format PLN/m² when both price and positive area are present."""
     if price_pln is not None and area_m2 is not None and area_m2 > 0:
         unit = price_pln / area_m2
-        return f"{unit:.0f} PLN/m²"
+        return f"{unit:,.0f} PLN/m²"
     return None
 
 
 def _district_badge(district_match: str) -> str:
-    """Return a prominent uppercase badge for the matched district."""
+    """Return a prominent uppercase English badge for the matched district."""
     norm = (district_match or "").strip().lower()
     if norm in ("mokotow", "mokotów"):
         return "[MOKOTÓW]"
     if norm == "ochota":
         return "[OCHOTA]"
     if norm == "warszawa_unassigned":
-        return "[WARSZAWA]"
+        return "[WARSAW - VERIFY DISTRICT]"
     return f"[{norm.upper() or 'UNKNOWN'}]"
+
+
+def _split_listings(
+    new_listings: list[Listing],
+) -> tuple[list[Listing], list[Listing]]:
+    """Split listings into confirmed (Mokotów/Ochota) and unassigned Warsaw lists."""
+    confirmed = [
+        item
+        for item in new_listings
+        if (item.district_match or "").lower() in ("mokotow", "mokotów", "ochota")
+    ]
+    unassigned = [
+        item
+        for item in new_listings
+        if (item.district_match or "").lower() == "warszawa_unassigned"
+    ]
+    return confirmed, unassigned
+
+
+def _extract_stats_summary(
+    new_listings: list[Listing],
+    price_drops: list[tuple[Listing, float]],
+    stats: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Normalize run statistics dictionary with sensible defaults."""
+    stats = stats or {}
+    sources_val = stats.get("sources_scanned") or stats.get("sources") or "all"
+    if isinstance(sources_val, (list, tuple, set)):
+        sources_str = ", ".join(str(s) for s in sources_val) if sources_val else "none"
+    else:
+        sources_str = str(sources_val)
+
+    total_scanned = stats.get(
+        "total_scanned",
+        stats.get("total_raw", stats.get("total", len(new_listings))),
+    )
+    new_count = stats.get("new_count", len(new_listings))
+    price_drops_count = stats.get("price_drops_count", len(price_drops))
+    warnings_list = stats.get("warnings") or stats.get("errors") or []
+    if isinstance(warnings_list, str):
+        warnings_list = [warnings_list]
+
+    return {
+        "sources_str": sources_str,
+        "total_scanned": total_scanned,
+        "new_count": new_count,
+        "price_drops_count": price_drops_count,
+        "warnings_list": list(warnings_list),
+    }
 
 
 def _format_listing_bullet(listing: Listing, include_badge: bool = True) -> str:
@@ -82,21 +133,12 @@ def format_markdown_report(
     price_drops: list[tuple[Listing, float]],
     stats: Optional[dict[str, Any]] = None,
 ) -> str:
-    """Render a clean Markdown digest grouped into 4 sections."""
-    stats = stats or {}
-    confirmed = [
-        item
-        for item in new_listings
-        if (item.district_match or "").lower() in ("mokotow", "mokotów", "ochota")
-    ]
-    unassigned = [
-        item
-        for item in new_listings
-        if (item.district_match or "").lower() == "warszawa_unassigned"
-    ]
+    """Render a clean English Markdown digest grouped into 4 sections."""
+    confirmed, unassigned = _split_listings(new_listings)
+    summary = _extract_stats_summary(new_listings, price_drops, stats)
 
     lines: list[str] = [
-        "# Raport Działek ROD — Warszawa (Mokotów & Ochota)",
+        "# Warsaw ROD Allotment Report — Mokotów & Ochota",
         "",
         "## 1. Confirmed Mokotów & Ochota ROD Listings",
         "",
@@ -106,7 +148,7 @@ def format_markdown_report(
         for item in confirmed:
             lines.append(_format_listing_bullet(item, include_badge=True))
     else:
-        lines.append("_Brak nowych potwierdzonych ogłoszeń dla dzielnic Mokotów i Ochota._")
+        lines.append("_No new confirmed listings for Mokotów or Ochota._")
 
     lines.extend(
         [
@@ -132,7 +174,7 @@ def format_markdown_report(
                 f"**{old_str} -> {new_str} (-{pct_drop:.1f}%)**{unit_part} | source: `{item.source}`"
             )
     else:
-        lines.append("_Brak obniżek cen dla wcześniej zaobserwowanych ogłoszeń._")
+        lines.append("_No price drops on previously seen listings._")
 
     lines.extend(
         [
@@ -146,24 +188,7 @@ def format_markdown_report(
         for item in unassigned:
             lines.append(_format_listing_bullet(item, include_badge=True))
     else:
-        lines.append("_Brak nieprzypisanych ogłoszeń z Warszawy._")
-
-    # Section 4: Run statistics footer
-    sources_val = stats.get("sources_scanned") or stats.get("sources") or "all"
-    if isinstance(sources_val, (list, tuple, set)):
-        sources_str = ", ".join(str(s) for s in sources_val) if sources_val else "none"
-    else:
-        sources_str = str(sources_val)
-
-    total_scanned = stats.get(
-        "total_scanned",
-        stats.get("total_raw", stats.get("total", len(new_listings))),
-    )
-    new_count = stats.get("new_count", len(new_listings))
-    price_drops_count = stats.get("price_drops_count", len(price_drops))
-    warnings_list = stats.get("warnings") or stats.get("errors") or []
-    if isinstance(warnings_list, str):
-        warnings_list = [warnings_list]
+        lines.append("_No unassigned Warsaw listings._")
 
     lines.extend(
         [
@@ -171,22 +196,433 @@ def format_markdown_report(
             "---",
             "### Run Statistics",
             "",
-            f"- **Sources scanned:** {sources_str}",
-            f"- **Total scanned:** {total_scanned}",
-            f"- **New count:** {new_count} (Confirmed Mokotów/Ochota: {len(confirmed)}, Unassigned Warsaw: {len(unassigned)})",
-            f"- **Price drops:** {price_drops_count}",
-            f"- **Warnings:** {len(warnings_list)}",
+            f"- **Sources scanned:** {summary['sources_str']}",
+            f"- **Total scanned:** {summary['total_scanned']}",
+            f"- **New count:** {summary['new_count']} (Confirmed Mokotów/Ochota: {len(confirmed)}, Unassigned Warsaw: {len(unassigned)})",
+            f"- **Price drops:** {summary['price_drops_count']}",
+            f"- **Warnings:** {len(summary['warnings_list'])}",
         ]
     )
 
-    for warning in warnings_list:
+    for warning in summary["warnings_list"]:
         lines.append(f"  - ⚠️ {warning}")
 
     return "\n".join(lines) + "\n"
 
 
-def send_email(subject: str, report_text: str, smtp_config: dict[str, Any]) -> bool:
-    """Send report via SMTP using standard library ``smtplib``."""
+def _format_plain_listing(item: Listing) -> list[str]:
+    """Format a single listing for plain-text email without raw Markdown characters."""
+    badge = _district_badge(item.district_match)
+    garden = f"{item.matched_garden} — " if item.matched_garden else ""
+    price_str = _format_price_pln(item.price_pln, item.price_raw)
+
+    meta_parts: list[str] = [f"Price: {price_str}"]
+    if item.area_m2 is not None and item.area_m2 > 0:
+        meta_parts.append(f"Area: {item.area_m2:g} m²")
+    unit_str = _format_unit_price(item.price_pln, item.area_m2)
+    if unit_str:
+        meta_parts.append(f"Unit Price: {unit_str}")
+    if item.source:
+        meta_parts.append(f"Source: {item.source}")
+    if item.location_raw:
+        meta_parts.append(f"Location: {item.location_raw}")
+
+    item_lines = [
+        f"  • {badge} {garden}{item.title}",
+        f"    {' | '.join(meta_parts)}",
+    ]
+    if item.match_reason:
+        item_lines.append(f"    Match: {item.match_reason}")
+    item_lines.append(f"    Link: {item.url}")
+    return item_lines
+
+
+def format_plain_email(
+    new_listings: list[Listing],
+    price_drops: list[tuple[Listing, float]],
+    stats: Optional[dict[str, Any]] = None,
+) -> str:
+    """Render a clean, readable plain-text email with zero raw Markdown syntax."""
+    confirmed, unassigned = _split_listings(new_listings)
+    summary = _extract_stats_summary(new_listings, price_drops, stats)
+
+    lines: list[str] = [
+        "WARSAW ROD ALLOTMENT SCANNER",
+        "Daily Digest — Mokotów & Ochota",
+        "=" * 64,
+        (
+            f"Summary: {len(confirmed)} confirmed (Mokotów/Ochota) | "
+            f"{len(price_drops)} price drops | "
+            f"{len(unassigned)} unassigned Warsaw | "
+            f"{summary['total_scanned']} total scanned"
+        ),
+        "",
+        "1. CONFIRMED MOKOTÓW & OCHOTA ROD LISTINGS",
+        "-" * 64,
+    ]
+
+    if confirmed:
+        for idx, item in enumerate(confirmed):
+            if idx > 0:
+                lines.append("")
+            lines.extend(_format_plain_listing(item))
+    else:
+        lines.append("  No new confirmed listings for Mokotów or Ochota.")
+
+    lines.extend(
+        [
+            "",
+            "2. PRICE DROPS ON PREVIOUSLY SEEN LISTINGS",
+            "-" * 64,
+        ]
+    )
+
+    if price_drops:
+        for idx, (item, old_price) in enumerate(price_drops):
+            if idx > 0:
+                lines.append("")
+            new_price = item.price_pln if item.price_pln is not None else old_price
+            drop_amount = old_price - new_price
+            pct_drop = (drop_amount / old_price * 100.0) if old_price > 0 else 0.0
+            old_str = _format_price_pln(old_price)
+            new_str = _format_price_pln(new_price, item.price_raw)
+            badge = _district_badge(item.district_match)
+            garden = f"{item.matched_garden} — " if item.matched_garden else ""
+            meta_parts = [f"Price Drop: {old_str} -> {new_str} (-{pct_drop:.1f}%)"]
+            if item.area_m2 is not None and item.area_m2 > 0:
+                meta_parts.append(f"Area: {item.area_m2:g} m²")
+            unit_str = _format_unit_price(item.price_pln, item.area_m2)
+            if unit_str:
+                meta_parts.append(f"Unit Price: {unit_str}")
+            if item.source:
+                meta_parts.append(f"Source: {item.source}")
+            lines.append(f"  • {badge} {garden}{item.title}")
+            lines.append(f"    {' | '.join(meta_parts)}")
+            lines.append(f"    Link: {item.url}")
+    else:
+        lines.append("  No price drops on previously seen listings.")
+
+    lines.extend(
+        [
+            "",
+            "3. UNASSIGNED WARSAW LISTINGS (VERIFY IF MOKOTÓW/OCHOTA)",
+            "-" * 64,
+        ]
+    )
+
+    if unassigned:
+        for idx, item in enumerate(unassigned):
+            if idx > 0:
+                lines.append("")
+            lines.extend(_format_plain_listing(item))
+    else:
+        lines.append("  No unassigned Warsaw listings.")
+
+    lines.extend(
+        [
+            "",
+            "RUN STATISTICS",
+            "-" * 64,
+            f"  Sources scanned: {summary['sources_str']}",
+            f"  Total scanned:   {summary['total_scanned']}",
+            f"  New listings:    {summary['new_count']} (Confirmed: {len(confirmed)}, Unassigned Warsaw: {len(unassigned)})",
+            f"  Price drops:     {summary['price_drops_count']}",
+            f"  Warnings:        {len(summary['warnings_list'])}",
+        ]
+    )
+
+    for warning in summary["warnings_list"]:
+        lines.append(f"    - Warning: {warning}")
+
+    return "\n".join(lines) + "\n"
+
+
+def _html_badge_pill(district_match: str) -> str:
+    """Return an inline-styled HTML pill badge for the listing district."""
+    norm = (district_match or "").strip().lower()
+    if norm in ("mokotow", "mokotów"):
+        bg, fg, label = "#dcfce7", "#166534", "MOKOTÓW"
+    elif norm == "ochota":
+        bg, fg, label = "#dbeafe", "#1e40af", "OCHOTA"
+    elif norm == "warszawa_unassigned":
+        bg, fg, label = "#fef3c7", "#92400e", "WARSAW - VERIFY"
+    else:
+        bg, fg, label = "#f3f4f6", "#374151", html.escape(norm.upper() or "UNKNOWN")
+
+    return (
+        f'<span style="display: inline-block; background: {bg}; color: {fg}; '
+        f'font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; '
+        f'letter-spacing: 0.03em; text-transform: uppercase; vertical-align: middle;">'
+        f"{label}</span>"
+    )
+
+
+def _html_listing_card(item: Listing) -> str:
+    """Render a single listing card with inline CSS for Gmail desktop & mobile."""
+    badge_html = _html_badge_pill(item.district_match)
+    garden_html = (
+        f' <strong style="color: #111827; font-size: 13px; margin-left: 6px; vertical-align: middle;">'
+        f"{html.escape(item.matched_garden)}</strong>"
+        if item.matched_garden
+        else ""
+    )
+    safe_url = html.escape(item.url or "#", quote=True)
+    safe_title = html.escape(item.title or "Untitled listing")
+    price_str = html.escape(_format_price_pln(item.price_pln, item.price_raw))
+
+    meta_pills: list[str] = [
+        f'<span style="display: inline-block; background: #f0fdf4; color: #166534; '
+        f'font-weight: 700; font-size: 13px; padding: 3px 8px; border-radius: 6px; '
+        f'margin-right: 6px; margin-top: 4px;">Price: {price_str}</span>'
+    ]
+    if item.area_m2 is not None and item.area_m2 > 0:
+        area_str = html.escape(f"{item.area_m2:g} m²")
+        meta_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #374151; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Area: <strong>{area_str}</strong></span>"
+        )
+    unit_str = _format_unit_price(item.price_pln, item.area_m2)
+    if unit_str:
+        meta_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #374151; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Unit Price: <strong>{html.escape(unit_str)}</strong></span>"
+        )
+    if item.source:
+        meta_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #4b5563; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Source: <strong>{html.escape(item.source)}</strong></span>"
+        )
+    if item.location_raw:
+        meta_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #4b5563; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Location: {html.escape(item.location_raw)}</span>"
+        )
+
+    reason_html = (
+        f'<div style="color: #6b7280; font-size: 12px; margin-top: 6px;">'
+        f"Match reason: {html.escape(item.match_reason)}</div>"
+        if item.match_reason
+        else ""
+    )
+
+    return (
+        '<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; '
+        'margin-bottom: 12px; background: #ffffff;">'
+        f'<div style="margin-bottom: 6px;">{badge_html}{garden_html}</div>'
+        f'<div style="margin-bottom: 8px;">'
+        f'<a href="{safe_url}" style="color: #0f766e; font-size: 16px; font-weight: 600; '
+        f'text-decoration: none;">{safe_title}</a>'
+        f"</div>"
+        f'<div style="line-height: 1.6;">{"".join(meta_pills)}</div>'
+        f"{reason_html}"
+        "</div>"
+    )
+
+
+def _html_price_drop_card(item: Listing, old_price: float) -> str:
+    """Render a price drop card with struck-through old price and green new price."""
+    badge_html = _html_badge_pill(item.district_match)
+    garden_html = (
+        f' <strong style="color: #111827; font-size: 13px; margin-left: 6px; vertical-align: middle;">'
+        f"{html.escape(item.matched_garden)}</strong>"
+        if item.matched_garden
+        else ""
+    )
+    safe_url = html.escape(item.url or "#", quote=True)
+    safe_title = html.escape(item.title or "Untitled listing")
+
+    new_price = item.price_pln if item.price_pln is not None else old_price
+    drop_amount = old_price - new_price
+    pct_drop = (drop_amount / old_price * 100.0) if old_price > 0 else 0.0
+    old_str = html.escape(_format_price_pln(old_price))
+    new_str = html.escape(_format_price_pln(new_price, item.price_raw))
+
+    extra_pills: list[str] = []
+    if item.area_m2 is not None and item.area_m2 > 0:
+        extra_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #374151; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Area: <strong>{html.escape(f'{item.area_m2:g} m²')}</strong></span>"
+        )
+    unit_str = _format_unit_price(item.price_pln, item.area_m2)
+    if unit_str:
+        extra_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #374151; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Unit Price: <strong>{html.escape(unit_str)}</strong></span>"
+        )
+    if item.source:
+        extra_pills.append(
+            f'<span style="display: inline-block; background: #f3f4f6; color: #4b5563; '
+            f'font-size: 12px; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-top: 4px;">'
+            f"Source: <strong>{html.escape(item.source)}</strong></span>"
+        )
+
+    return (
+        '<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; '
+        'margin-bottom: 12px; background: #ffffff;">'
+        f'<div style="margin-bottom: 6px;">{badge_html}{garden_html}</div>'
+        f'<div style="margin-bottom: 8px;">'
+        f'<a href="{safe_url}" style="color: #0f766e; font-size: 16px; font-weight: 600; '
+        f'text-decoration: none;">{safe_title}</a>'
+        f"</div>"
+        '<div style="line-height: 1.6;">'
+        f'<span style="display: inline-block; background: #f0fdf4; padding: 4px 10px; '
+        f'border-radius: 6px; margin-right: 6px; margin-top: 4px; font-size: 13px;">'
+        f'<del style="color: #6b7280;">{old_str}</del> &rarr; '
+        f'<strong style="color: #166534;">{new_str}</strong>'
+        f"</span>"
+        f'<span style="display: inline-block; background: #dcfce7; color: #166534; '
+        f'font-weight: 700; font-size: 12px; padding: 3px 8px; border-radius: 9999px; '
+        f'margin-right: 6px; margin-top: 4px;">-{pct_drop:.1f}%</span>'
+        f'{"".join(extra_pills)}'
+        "</div>"
+        "</div>"
+    )
+
+
+def format_html_email(
+    new_listings: list[Listing],
+    price_drops: list[tuple[Listing, float]],
+    stats: Optional[dict[str, Any]] = None,
+) -> str:
+    """Generate a self-contained HTML email with inline CSS for Gmail desktop and mobile."""
+    confirmed, unassigned = _split_listings(new_listings)
+    summary = _extract_stats_summary(new_listings, price_drops, stats)
+
+    gh_repo = os.environ.get("GITHUB_REPOSITORY", "").strip().strip("/")
+    if gh_repo:
+        history_url = f"https://github.com/{gh_repo}/blob/main/data/history/listings_history.csv"
+    else:
+        history_url = "https://github.com/TheMioa/rod-warszawa-scanner/blob/main/data/history/listings_history.csv"
+
+    if confirmed:
+        confirmed_html = "".join(_html_listing_card(item) for item in confirmed)
+    else:
+        confirmed_html = (
+            '<div style="border: 1px dashed #d1d5db; border-radius: 8px; padding: 14px 16px; '
+            'color: #6b7280; font-size: 14px; background: #f9fafb;">'
+            "No new confirmed listings for Mokotów or Ochota."
+            "</div>"
+        )
+
+    if price_drops:
+        drops_html = "".join(_html_price_drop_card(item, old) for item, old in price_drops)
+    else:
+        drops_html = (
+            '<div style="border: 1px dashed #d1d5db; border-radius: 8px; padding: 14px 16px; '
+            'color: #6b7280; font-size: 14px; background: #f9fafb;">'
+            "No price drops on previously seen listings."
+            "</div>"
+        )
+
+    if unassigned:
+        unassigned_html = "".join(_html_listing_card(item) for item in unassigned)
+    else:
+        unassigned_html = (
+            '<div style="border: 1px dashed #d1d5db; border-radius: 8px; padding: 14px 16px; '
+            'color: #6b7280; font-size: 14px; background: #f9fafb;">'
+            "No unassigned Warsaw listings."
+            "</div>"
+        )
+
+    warnings_html = ""
+    if summary["warnings_list"]:
+        warning_items = "".join(
+            f'<li style="margin-bottom: 4px;">{html.escape(str(w))}</li>'
+            for w in summary["warnings_list"]
+        )
+        warnings_html = (
+            '<div style="margin-top: 8px; color: #92400e; font-size: 12px;">'
+            "<strong>Warnings:</strong>"
+            f'<ul style="margin: 4px 0 0 18px; padding: 0;">{warning_items}</ul>'
+            "</div>"
+        )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warsaw ROD Allotment Scanner — Daily Digest</title>
+</head>
+<body style="margin: 0; padding: 16px; background-color: #f3f4f6;">
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1f2937; max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+  <div style="background: #14532d; color: #ffffff; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">Warsaw ROD Allotment Scanner</h1>
+    <p style="margin: 4px 0 0 0; font-size: 14px; color: #bbf7d0;">Daily Digest — Mokotów &amp; Ochota</p>
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; background: #f8fafc; border-bottom: 1px solid #e5e7eb;">
+    <tr>
+      <td width="25%" align="center" style="padding: 12px 8px; border-right: 1px solid #e5e7eb;">
+        <div style="font-size: 20px; font-weight: 700; color: #166534;">{len(confirmed)}</div>
+        <div style="font-size: 11px; color: #4b5563; font-weight: 600;">Confirmed (Mokotów/Ochota)</div>
+      </td>
+      <td width="25%" align="center" style="padding: 12px 8px; border-right: 1px solid #e5e7eb;">
+        <div style="font-size: 20px; font-weight: 700; color: #0f766e;">{len(price_drops)}</div>
+        <div style="font-size: 11px; color: #4b5563; font-weight: 600;">Price Drops</div>
+      </td>
+      <td width="25%" align="center" style="padding: 12px 8px; border-right: 1px solid #e5e7eb;">
+        <div style="font-size: 20px; font-weight: 700; color: #92400e;">{len(unassigned)}</div>
+        <div style="font-size: 11px; color: #4b5563; font-weight: 600;">Unassigned Warsaw</div>
+      </td>
+      <td width="25%" align="center" style="padding: 12px 8px;">
+        <div style="font-size: 20px; font-weight: 700; color: #1f2937;">{html.escape(str(summary['total_scanned']))}</div>
+        <div style="font-size: 11px; color: #4b5563; font-weight: 600;">Total Scanned</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="padding: 20px 24px;">
+    <h2 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #111827; border-bottom: 2px solid #dcfce7; padding-bottom: 6px;">
+      1. Confirmed Mokotów &amp; Ochota ROD Listings
+    </h2>
+    {confirmed_html}
+
+    <h2 style="margin: 24px 0 12px 0; font-size: 16px; font-weight: 700; color: #111827; border-bottom: 2px solid #ccfbf1; padding-bottom: 6px;">
+      2. Price Drops on Previously Seen Listings
+    </h2>
+    {drops_html}
+
+    <h2 style="margin: 24px 0 12px 0; font-size: 16px; font-weight: 700; color: #111827; border-bottom: 2px solid #fef3c7; padding-bottom: 6px;">
+      3. Unassigned Warsaw Listings — Verify District
+    </h2>
+    {unassigned_html}
+  </div>
+
+  <div style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 16px 24px; font-size: 12px; color: #4b5563; line-height: 1.6;">
+    <div style="font-weight: 700; color: #1f2937; margin-bottom: 4px;">Run Statistics</div>
+    <div>
+      <strong>Sources scanned:</strong> {html.escape(summary['sources_str'])} &bull;
+      <strong>Total scanned:</strong> {html.escape(str(summary['total_scanned']))} &bull;
+      <strong>New listings:</strong> {html.escape(str(summary['new_count']))} &bull;
+      <strong>Price drops:</strong> {html.escape(str(summary['price_drops_count']))} &bull;
+      <strong>Warnings:</strong> {len(summary['warnings_list'])}
+    </div>
+    {warnings_html}
+    <div style="margin-top: 8px;">
+      Historical archive:
+      <a href="{html.escape(history_url, quote=True)}" style="color: #0f766e; font-weight: 600; text-decoration: none;">data/history/listings_history.csv</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def send_email(
+    subject: str,
+    report_text: str,
+    smtp_config: dict[str, Any],
+    html_body: Optional[str] = None,
+) -> bool:
+    """Send report via SMTP using standard library ``smtplib`` with optional HTML alternative."""
     if not smtp_config:
         return False
 
@@ -249,6 +685,8 @@ def send_email(subject: str, report_text: str, smtp_config: dict[str, Any]) -> b
     msg["From"] = from_addr
     msg["To"] = to_addr
     msg.set_content(report_text)
+    if html_body:
+        msg.add_alternative(html_body, subtype="html")
 
     try:
         if port == 465:
@@ -327,6 +765,7 @@ def dispatch_notifications(
     report_md: str,
     dry_run: bool = False,
     force_notify: bool = False,
+    stats: Optional[dict[str, Any]] = None,
 ) -> dict[str, str]:
     """Check environment variables and dispatch Email and GitHub notifications."""
     results: dict[str, str] = {}
@@ -334,8 +773,8 @@ def dispatch_notifications(
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     subject = (
-        f"[ROD Warszawa] {len(new_listings)} nowych ogłoszeń, "
-        f"{len(price_drops)} obniżek cen ({date_str})"
+        f"[Warsaw ROD Scanner] Daily Digest: {len(new_listings)} new listings, "
+        f"{len(price_drops)} price drops ({date_str})"
     )
 
     # 1. Email (SMTP)
@@ -355,8 +794,12 @@ def dispatch_notifications(
                 "to": email_to,
                 "from": os.environ.get("NOTIFY_EMAIL_FROM", "").strip(),
             }
+            plain_body = format_plain_email(new_listings, price_drops, stats)
+            html_body = format_html_email(new_listings, price_drops, stats)
             results["email"] = (
-                "sent" if send_email(subject, report_md, smtp_config) else "failed"
+                "sent"
+                if send_email(subject, plain_body, smtp_config, html_body=html_body)
+                else "failed"
             )
 
     # 2. GitHub Issue Alerts

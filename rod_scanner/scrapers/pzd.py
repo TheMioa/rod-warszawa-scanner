@@ -18,24 +18,157 @@ from rod_scanner.scrapers.portals import (
     strip_html_tags,
 )
 
-# Keywords indicating plot availability, transfers, tenders, or garden announcements
+# Strict keywords indicating actual vacant plots, plot sales, transfers, tenders, or new garden allocations
 PZD_RELEVANCE_KEYWORDS: tuple[str, ...] = (
-    "działk",
-    "dzialk",
-    "ogród",
-    "ogrod",
-    "ogłoszen",
-    "ogloszen",
-    "woln",
-    "przetarg",
-    "nabyci",
-    "zbyci",
-    "odstąpi",
-    "odstapi",
-    "sprzeda",
-    "rod",
-    "prawa do działki",
+    "wolna działka",
+    "wolna dzialka",
+    "wolne działki",
+    "wolne dzialki",
+    "wolnych działek",
+    "wolnych dzialek",
+    "wolnych działkach",
+    "wolnych dzialkach",
+    "wykaz wolnych",
+    "sprzedam działk",
+    "sprzedam dzialk",
+    "sprzedaż działk",
+    "sprzedaz dzialk",
+    "na sprzedaż",
+    "na sprzedaz",
+    "odstąpię działk",
+    "odstapie dzialk",
+    "odstąpię prawo",
+    "odstapie prawo",
+    "przetarg na",
+    "nabór na",
+    "nabor na",
+    "przydział działk",
+    "przydzial dzialk",
+    "nowy ogród",
+    "nowy ogrod",
+    "nowe działki",
+    "nowe dzialki",
 )
+
+_DOCUMENT_EXTENSIONS: tuple[str, ...] = (
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".zip",
+    ".rtf",
+)
+
+_DOCUMENT_URL_PATHS: tuple[str, ...] = (
+    "/wp-content/uploads/",
+    "/dokumenty/",
+    "/pliki/",
+    "/wzory/",
+    "/prawo/",
+    "/ustawa/",
+    "/statut/",
+    "/regulamin/",
+)
+
+_EXPLICIT_PLOT_OFFER_PHRASES: tuple[str, ...] = (
+    "wolna działka",
+    "wolna dzialka",
+    "wolne działki",
+    "wolne dzialki",
+    "wolnych działek",
+    "wolnych dzialek",
+    "wolnych działkach",
+    "wolnych dzialkach",
+    "wykaz wolnych",
+    "sprzedam działk",
+    "sprzedam dzialk",
+    "odstąpię działk",
+    "odstapie dzialk",
+    "odstąpię prawo",
+    "odstapie prawo",
+)
+
+_ADMIN_OR_DOCUMENT_TITLE_KEYWORDS: tuple[str, ...] = (
+    "ustawa",
+    "statut",
+    "regulamin",
+    "uchwała",
+    "uchwala",
+    "zarządzenie",
+    "zarzadzenie",
+    "wzór",
+    "wzor",
+    "wniosek",
+    "deklaracja",
+    "umowa",
+    "opłaty",
+    "oplaty",
+    "składki",
+    "skladki",
+    "walne zebranie",
+    "zebranie",
+    "komunikat dotyczący",
+    "komunikat dotyczacy",
+    "wod",
+    "prąd",
+    "prad",
+    "śmieci",
+    "smieci",
+    "odpad",
+    "harmonogram",
+    "dyżur",
+    "dyzur",
+    "szkoleni",
+    "konkurs",
+    "instrukcj",
+    "zasady",
+    "informacja o",
+    "poradnik",
+    "jak kupić",
+    "jak kupic",
+    "jak nabyć",
+    "jak nabyc",
+)
+
+
+_UTILITY_NOTICE_KEYWORDS: tuple[str, ...] = (
+    "wod",
+    "prąd",
+    "prad",
+)
+
+
+def _is_document_or_admin_notice(title: str, url: str) -> bool:
+    """Return True if the URL or title indicates a static document, bylaw, form template, or admin notice."""
+    raw_url = (url or "").strip().lower()
+    if raw_url:
+        parsed_path = urllib.parse.urlparse(raw_url).path.lower()
+        if any(parsed_path.endswith(ext) for ext in _DOCUMENT_EXTENSIONS):
+            return True
+        if any(seg in raw_url for seg in _DOCUMENT_URL_PATHS):
+            return True
+
+    low_title = (title or "").strip().lower()
+    if not low_title:
+        return False
+
+    if any(phrase in low_title for phrase in _EXPLICIT_PLOT_OFFER_PHRASES):
+        return False
+
+    for kw in _ADMIN_OR_DOCUMENT_TITLE_KEYWORDS:
+        if kw in _UTILITY_NOTICE_KEYWORDS:
+            # Allow classified plot titles mentioning utilities alongside area/price (e.g. "Działka ROD 400 m² z prądem")
+            has_plot_and_size = (
+                ("działk" in low_title or "dzialk" in low_title or "allotment" in low_title)
+                and bool(re.search(r"\b\d{2,4}\s*m(?:2|²)\b", low_title))
+            )
+            if has_plot_and_size:
+                continue
+        if kw in low_title:
+            return True
+
+    return False
 
 # Navigation/boilerplate link titles to ignore when scanning general news pages
 IGNORED_LINK_TITLES: frozenset[str] = frozenset(
@@ -148,10 +281,12 @@ def _extract_articles_and_links(
         pub = strip_html_tags(pub_m.group(1)) if pub_m else None
         if not title or not link:
             continue
+        full_url = urllib.parse.urljoin(base_url, link)
+        if _is_document_or_admin_notice(title, full_url):
+            continue
         combined = f"{title} {desc}"
         if not _matches_pzd_keywords(combined):
             continue
-        full_url = urllib.parse.urljoin(base_url, link)
         listing_id = make_listing_id(source, full_url)
         by_id[listing_id] = Listing(
             id=listing_id,
@@ -195,6 +330,8 @@ def _extract_articles_and_links(
             )
             title = strip_html_tags(link_text_m.group(1)) if link_text_m else ""
         if not title or title.lower() in IGNORED_LINK_TITLES:
+            continue
+        if _is_document_or_admin_notice(title, full_url):
             continue
 
         block_text = strip_html_tags(block)
@@ -242,9 +379,11 @@ def _extract_articles_and_links(
                 or title.lower() in IGNORED_LINK_TITLES
             ):
                 continue
+            full_url = urllib.parse.urljoin(base_url, raw_href)
+            if _is_document_or_admin_notice(title, full_url):
+                continue
             if not _matches_pzd_keywords(title):
                 continue
-            full_url = urllib.parse.urljoin(base_url, raw_href)
             listing_id = make_listing_id(source, full_url)
             if listing_id not in by_id:
                 by_id[listing_id] = Listing(

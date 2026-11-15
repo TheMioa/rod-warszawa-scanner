@@ -1,8 +1,33 @@
 # Warsaw ROD Działki Scanner (Mokotów & Ochota)
 
-An automated daily scanner that monitors Polish real-estate classified portals, **PZD Okręg Mazowiecki**, and official **Warsaw ROD (Rodzinne Ogrody Działkowe)** garden websites for allotment plots (*działki ROD / ogródki działkowe*) available in **Mokotów** and **Ochota**.
+An automated scanner that monitors Polish real-estate classified portals, **PZD Okręg Mazowiecki**, and official **Warsaw ROD (Rodzinne Ogrody Działkowe)** garden websites for allotment plots (*działki ROD / ogródki działkowe*) available in **Mokotów** and **Ochota**.
 
-Designed to run **100% free on GitHub Actions** on a daily cron schedule (`17 6 * * *` UTC — 07:17 CET / 08:17 CEST), persisting seen listings directly in the repository (`data/seen_listings.json`) so you only get alerted when **brand-new listings** appear or when a previously seen plot **drops in price**.
+Designed to run **100% free on GitHub Actions** on an **every-6-hours schedule** (`04:00, 10:00, 16:00, 22:00` Warsaw CET) with a **10:00 AM Daily Digest email**, persisting seen listings (`data/seen_listings.json`) and a full **Historical Archive** (`data/history/`) directly in the repository so you never miss short-lived offers and only get alerted when **new listings** or **price drops** appear.
+
+---
+
+## Schedule & Daily Digest Architecture
+
+- **Every 6 Hours Background Scans (`03:00, 15:00, 21:00 UTC` → `04:00, 16:00, 22:00 CET` in Warsaw)**:
+  - Runs in `--mode scan-only`.
+  - Scrapes all portals and ROD garden boards, saves any newly discovered listings or price drops into `data/seen_listings.json` as pending (`notified_at: null`), updates `data/history/listings_history.csv` and `data/history/runs_log.jsonl`, and writes `data/latest_report.md` + the GitHub Actions Step Summary without sending emails or opening GitHub Issues.
+- **10:00 AM Daily Digest (`09:00 UTC` → `10:00 AM CET` in Warsaw)**:
+  - Runs in `--mode digest` (the default mode).
+  - Performs a fresh scan and then gathers **all un-notified new listings and price drops accumulated across the 6-hour scans over the last 24 hours**.
+  - Sends a styled HTML + plain-text **Daily Digest Email** and/or opens a **GitHub Issue (`rod-alert`)**, archives the daily report snapshot to `data/history/YYYY-MM/YYYY-MM-DD.md`, and marks all included items as notified (`notified_at` + `last_notified_price_pln`).
+
+---
+
+## Historical Archive (`data/history/`)
+
+Every run automatically maintains a historical archive committed directly to the repository:
+
+| Path | Format | Description |
+| :--- | :--- | :--- |
+| [`data/history/listings_history.csv`](data/history/listings_history.csv) | UTF-8 CSV | **Interactive GitHub Table** of all discovered ROD listings sorted by `first_seen_at` descending (`id, source, district_match, matched_garden, title, price_pln, area_m2, price_per_m2, first_seen_at, last_seen_at, times_seen, price_changes, url, location_raw`). GitHub renders this file natively as a searchable table. |
+| `data/history/runs_log.jsonl` | JSON Lines | Append-only log of every scanner execution (`timestamp, mode, total_scanned, new_count, price_drops_count, sources_scanned, warnings_count`). |
+| `data/history/YYYY-MM/YYYY-MM-DD.md` | Markdown | Daily digest snapshots organized by month for historical comparison. |
+| `data/seen_listings.json` | JSON | Full persistent state store including per-listing `price_history` arrays, `times_seen`, `notified_at`, and `last_notified_price_pln`. |
 
 ---
 
@@ -67,8 +92,8 @@ Because the workflow commits updated `data/seen_listings.json` and `data/latest_
 Every run automatically publishes a formatted Markdown report to the **GitHub Actions Step Summary**. For active alerts when new plots or price drops are discovered, go to **Settings → Secrets and variables → Actions → New repository secret** and configure **GitHub Issue Alerts**, **Email (SMTP)**, or both:
 
 #### Option A: GitHub Issue Alerts (Zero External Accounts Needed)
-- `GITHUB_ISSUE_ALERTS`: Set to `true`.
-- (`GITHUB_TOKEN` is provided automatically by GitHub Actions). Whenever new plots or price drops are found, the workflow creates a GitHub Issue labeled `rod-alert` containing the full Markdown digest, which triggers standard GitHub email and mobile notifications.
+- `ISSUE_ALERTS`: Set to `true` (defaults to `true` in `.github/workflows/daily_rod_scan.yml`).
+- (`GITHUB_TOKEN` is provided automatically by GitHub Actions). Whenever new plots or price drops are found during a digest run, the workflow creates a GitHub Issue labeled `rod-alert` containing the full Markdown digest, which triggers standard GitHub email and mobile notifications.
 
 #### Option B: Email Notifications (SMTP)
 Add repository secrets for your SMTP provider (e.g., Gmail App Password, Fastmail, Mailbox.org):
@@ -76,8 +101,12 @@ Add repository secrets for your SMTP provider (e.g., Gmail App Password, Fastmai
 - `SMTP_PORT`: e.g. `587` (STARTTLS) or `465` (SSL)
 - `SMTP_USER`: Your SMTP username / email address
 - `SMTP_PASSWORD`: Your SMTP password or App Password
-- `NOTIFY_EMAIL_TO`: Recipient email address(es)
+- `NOTIFY_EMAIL_TO`: Recipient email address(es) (comma-separated for multiple recipients)
 - `NOTIFY_EMAIL_FROM`: Sender email address (defaults to `SMTP_USER` if omitted)
+
+#### Built-in AI Agent & Web Search Discovery (Zero Extra Secrets Required)
+- **GitHub Models (`GITHUB_TOKEN`)**: Out of the box in GitHub Actions (via `permissions: models: read`), the scanner automatically uses the built-in `GITHUB_TOKEN` with **GitHub Models (`openai/gpt-4o-mini`)** combined with **DuckDuckGo HTML / Bing RSS web search discovery** (`web_search_rod_listings`) to find listings across OLX, Otodom, Gratka, Sprzedajemy, and PZD, semantically verify Mokotów & Ochota locations, and translate Polish listing titles and match explanations into English.
+- **Optional Gemini / AGY API Key Override**: You can also optionally set `GEMINI_API_KEY` (or `AGY_API_KEY`) in repository secrets to use **Google Gemini (`gemini-2.5-flash`)** with Google Search grounding (`ai_search_rod_listings`).
 
 #### Optional: Extra ROD Garden Board URLs
 - `ROD_EXTRA_GARDEN_URLS`: Comma-separated list of additional ROD garden notice board URLs to scrape on every run.
@@ -102,8 +131,11 @@ python3 -m rod_scanner --demo-fixture --dry-run
 
 ### Run a Live Scan Locally
 ```bash
-# Standard scan (saves state to data/seen_listings.json and report to data/latest_report.md)
-python3 -m rod_scanner
+# Daily digest run (default --mode digest: updates state/history and sends Email + GitHub notifications)
+python3 -m rod_scanner --mode digest
+
+# Background 6-hour scan (--mode scan-only: queues discoveries in state & updates CSV/log without sending alerts)
+python3 -m rod_scanner --mode scan-only
 
 # High-confidence Mokotów & Ochota matches only (drop unassigned Warsaw fallback)
 python3 -m rod_scanner --strict-districts-only
@@ -118,8 +150,10 @@ python3 -m rod_scanner --demo-fixture --dry-run --force-notify
 ### CLI Options Reference
 | Flag | Default | Description |
 | :--- | :--- | :--- |
+| `--mode {digest,scan-only,scan-and-notify}` | `digest` | `scan-only` records new listings/price drops as pending (`notified_at=None`) and updates history without sending alerts; `digest` (and `scan-and-notify`) gathers all pending discoveries since the last digest, archives a daily snapshot, and sends Email + GitHub notifications. |
 | `--state-file PATH` | `data/seen_listings.json` | Path to the persistent seen-listings JSON state file. |
 | `--output-report PATH` | `data/latest_report.md` | Path where the generated Markdown digest is saved. |
+| `--history-dir PATH` | `data/history` | Directory for `listings_history.csv`, `runs_log.jsonl`, and `YYYY-MM/YYYY-MM-DD.md` daily snapshots. |
 | `--strict-districts-only` | `False` | Excludes `warszawa_unassigned` listings so only confirmed Mokotów & Ochota plots are included. |
 | `--sources LIST` | `all` | Comma-separated list of sources (`olx,otodom,gratka,sprzedajemy,pzd_mazowiecki,rod_garden`) or `all`. |
 | `--demo-fixture` | `False` | Uses built-in sample listings instead of making live HTTP requests. |
@@ -137,11 +171,12 @@ python3 -m unittest discover -s tests -v
 
 ## Triggering a Manual Test Run on GitHub Actions (`workflow_dispatch`)
 
-You do not need to wait for the daily `06:17 UTC` cron job to test your setup:
+You do not need to wait for the scheduled cron runs (`04:00, 10:00, 16:00, 22:00` Warsaw time) to test your setup:
 1. Navigate to your repository on GitHub and click the **Actions** tab.
 2. In the left sidebar, select **Daily Warsaw ROD Działki Scanner (Mokotów & Ochota)**.
 3. Click the **Run workflow** dropdown button on the right:
+   - Choose **`mode`** (`digest` to send the Daily Digest email/issue, or `scan-only` for a quiet background scan).
    - Check **`demo_fixture`** if you want to test the pipeline using sample Mokotów & Ochota listings without waiting on live portals.
    - Check **`force_notify`** if you want to verify your Email or GitHub Issue notifications immediately.
    - Check **`strict_districts_only`** if you only want confirmed Mokotów & Ochota matches.
-4. Click **Run workflow**. Once complete, view the formatted Markdown digest directly in the workflow run's **Summary** tab or download the `rod-scan-report` artifact.
+4. Click **Run workflow**. Once complete, view the formatted Markdown digest directly in the workflow run's **Summary** tab or browse [`data/history/listings_history.csv`](data/history/listings_history.csv) in the repository.

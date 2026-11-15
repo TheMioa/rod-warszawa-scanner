@@ -2,11 +2,20 @@ name: Daily Warsaw ROD Działki Scanner (Mokotów & Ochota)
 
 on:
   schedule:
-    # Runs daily at 06:17 UTC (07:17 CET / 08:17 CEST).
-    # Off-minute schedule avoids GitHub Actions top-of-hour queue congestion.
-    - cron: '17 6 * * *'
+    # Daily 10:00 AM Warsaw Time Digest (09:00 UTC = 10:00 AM CET in Warsaw)
+    - cron: '0 9 * * *'
+    # Extra background scans every 6 hours (03:00, 15:00, 21:00 UTC = 04:00, 16:00, 22:00 CET in Warsaw)
+    - cron: '0 3,15,21 * * *'
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'Execution mode: digest (send 10 AM Daily Digest email/alerts) or scan-only (background 6h scan)'
+        required: false
+        default: 'digest'
+        type: choice
+        options:
+          - digest
+          - scan-only
       strict_districts_only:
         description: 'Only keep high-confidence Mokotów & Ochota matches (exclude unassigned Warsaw)'
         required: false
@@ -26,6 +35,7 @@ on:
 permissions:
   contents: write
   issues: write
+  models: read
 
 jobs:
   scan-rod-listings:
@@ -50,6 +60,8 @@ jobs:
 
       - name: Run Warsaw ROD scanner
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGY_API_KEY: ${{ secrets.AGY_API_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
@@ -60,11 +72,19 @@ jobs:
           ROD_EXTRA_GARDEN_URLS: ${{ secrets.ROD_EXTRA_GARDEN_URLS }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
+          INPUT_MODE: ${{ inputs.mode || 'digest' }}
           INPUT_STRICT_DISTRICTS_ONLY: ${{ inputs.strict_districts_only }}
           INPUT_FORCE_NOTIFY: ${{ inputs.force_notify }}
           INPUT_DEMO_FIXTURE: ${{ inputs.demo_fixture }}
         run: |
-          EXTRA_ARGS=()
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${GITHUB_EVENT_SCHEDULE}" != "0 9 * * *" ]; then
+            SCAN_MODE="scan-only"
+          else
+            SCAN_MODE="${INPUT_MODE:-digest}"
+          fi
+          EXTRA_ARGS=("--mode" "${SCAN_MODE}")
           if [ "${INPUT_STRICT_DISTRICTS_ONLY}" = "true" ]; then
             EXTRA_ARGS+=("--strict-districts-only")
           fi
@@ -74,7 +94,7 @@ jobs:
           if [ "${INPUT_DEMO_FIXTURE}" = "true" ]; then
             EXTRA_ARGS+=("--demo-fixture")
           fi
-          python -m rod_scanner --state-file data/seen_listings.json --output-report data/latest_report.md "${EXTRA_ARGS[@]}"
+          python -m rod_scanner --state-file data/seen_listings.json --output-report data/latest_report.md --history-dir data/history "${EXTRA_ARGS[@]}"
 
       - name: Upload scan report and state artifact
         if: always()
@@ -84,6 +104,7 @@ jobs:
           path: |
             data/latest_report.md
             data/seen_listings.json
+            data/history/
           if-no-files-found: ignore
 
       - name: Commit and push updated state and report
@@ -91,5 +112,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/seen_listings.json data/latest_report.md data/
-          git diff --cached --quiet || (git commit -m "chore(state): update seen ROD listings [skip ci]" && git push)
+          git add data/
+          git diff --cached --quiet || (git commit -m "chore(state): update seen ROD listings and history [skip ci]" && git push)

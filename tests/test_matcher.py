@@ -73,6 +73,9 @@ class TestIsRodRelated(unittest.TestCase):
             Listing(id="n2", source="otodom", title="Lokal biurowy do wynajęcia Ochota Grójecka", url="https://otodom.pl/n2"),
             Listing(id="n3", source="gratka", title="Działka budowlana 1500m2 Warszawa Mokotów", url="https://gratka.pl/n3"),
             Listing(id="n4", source="olx", title="Apartament z ogródkiem Warszawa Wierzbno", url="https://olx.pl/n4"),
+            Listing(id="n5", source="pzd_mazowiecki", title="Wzór umowy przeniesienia praw do działki ROD", url="http://mazowiecki.pzd.pl/wp-content/uploads/wzor.pdf"),
+            Listing(id="n6", source="rod_garden", title="[ROD Rakowiec] Komunikat dotyczący opłat za wodę i prąd oraz wywozu śmieci", url="https://rodrakowiec.pl/oplaty-2026"),
+            Listing(id="n7", source="rod_garden", title="[ROD Fort Szczęśliwice] Statut i Regulamin ROD oraz uchwały Walnego Zebrania", url="https://rodfortszczesliwice.pl/regulamin"),
         ]
         for case in cases:
             with self.subTest(id=case.id):
