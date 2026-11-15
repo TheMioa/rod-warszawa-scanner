@@ -1,1 +1,460 @@
-{}
+{
+  "olx:1059472193": {
+    "area_m2": 300.0,
+    "description_snippet": "Dzień dobry, Sprzedam działkę ROD na ogrodach działkowych przy Zalewie, ul. Dolna 2 w Rawie Mazowieckiej. Działka o powierzchni 300 m2. Na działce znajduje się nieduży ale przytulny domek. W 2022 roku zrobiliśmy łazienkę (kabina prysznicowa, \"tron\", umywalka oraz bojler 40L). W 2023 roku wymieniliśm",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1059472193",
+    "last_notified_price_pln": 97500.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Rawa Mazowiecka",
+    "match_reason": "Matched Mokotów location/street 'dolna'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 97500.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 97500.0,
+    "price_raw": "97 500 zł",
+    "published_at": "2026-03-08T19:41:19+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD 300 m2 z domkiem przy Zalewie w Rawie Mazowieckiej",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-300-m2-z-domkiem-przy-zalewie-w-rawie-mazowieckiej-CID3-ID19Hr7b.html"
+  },
+  "olx:1062862557": {
+    "area_m2": 250.0,
+    "description_snippet": "Na sprzedaż działka o powierzchni 250 m² z domkiem w ROD Kalina, położona w sercu Mokotowa przy Metrze Wierzbno, nieopodal telewizji. Lokalizacja – największy atut: - bardzo blisko stacji metra; - świetna komunikacja (metro, tramwaje, autobusy); Działka w ROD Kalina: - domek / skład narzędzi plus na",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1062862557",
+    "last_notified_price_pln": 44000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 44000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 44000.0,
+    "price_raw": "44 000 zł",
+    "published_at": "2026-03-24T15:21:26+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka w sercu Mokotowa Metro Wierzbno - 250m z domkiem - ROD Kalina",
+    "url": "https://www.olx.pl/d/oferta/dzialka-w-sercu-mokotowa-metro-wierzbno-250m-z-domkiem-rod-kalina-CID3-ID19WF6t.html"
+  },
+  "olx:1065327539": {
+    "area_m2": 300.0,
+    "description_snippet": "Na sprzedaż działka ROD o powierzchni 300 m², położonej na terenie ROD Fort Szczęśliwice przy Al. Jerozolimskich na Ochocie w Warszawie. Działka ma bardzo duży potencjał i będzie świetną bazą do stworzenia własnego zielonego miejsca do wypoczynku w mieście. Wymaga odświeżenia i uporządkowania, m.in.",
+    "district_match": "ochota",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1065327539",
+    "last_notified_price_pln": 43000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Ochota",
+    "match_reason": "Matched Ochota garden 'ROD Fort Szczęśliwice' via keyword 'fort szczesliwice'",
+    "matched_garden": "ROD Fort Szczęśliwice",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 43000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 43000.0,
+    "price_raw": "43 000 zł",
+    "published_at": "2026-04-06T15:22:54+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD Fort Szczęśliwice 300 m² | woda, prąd, świetny dojazd, atrakcyjna cena!",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-fort-szczesliwice-300-m-woda-prad-swietny-dojazd-atrakcyjna-cena-CID3-ID1a60mf.html"
+  },
+  "olx:1070459099": {
+    "area_m2": null,
+    "description_snippet": "Zajmujemy się pracami porządkowymi na działkach budowlanych, przemysłowych, ROD itp. Zakres usług: - wycinka drzew i krzewów - karczowanie - usuwanie karp, korzeni - wyburzenia i rozbiórka budynków wraz z utylizacją - porządkowanie działek, domów, budynków ( przygotowanie do sprzedaży - wywóz z zała",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1070459099",
+    "last_notified_price_pln": null,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [],
+    "price_pln": null,
+    "price_raw": null,
+    "published_at": "2026-04-30T20:15:53+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Porządkowanie, czyszczenie, karczowanie działek ROD, rozbiórki, wyburzenia, trawniki",
+    "url": "https://www.olx.pl/d/oferta/porzadkowanie-czyszczenie-karczowanie-dzialek-rod-rozbiorki-wyburzenia-trawniki-CID4371-ID1arxjl.html"
+  },
+  "olx:1070527858": {
+    "area_m2": 1000.0,
+    "description_snippet": "Na sprzedaż przestronna działka rekreacyjna ROD o powierzchni 1000 m² (2 połączone działki) z murowanym domkiem całorocznym oraz garażem z poddaszem użytkowym. Nieruchomość położona w spokojnej, zielonej okolicy – ROD Polana, Wólka Wiciejowska. NAJWAŻNIEJSZE INFORMACJE działka ROD (rekreacyjna – nie",
+    "district_match": "warszawa_unassigned",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1070527858",
+    "last_notified_price_pln": 229000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Wólka Wiciejowska",
+    "match_reason": "Warsaw ROD listing without specific district (unassigned)",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 229000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 229000.0,
+    "price_raw": "229 000 zł",
+    "published_at": "2026-05-01T12:30:43+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "ROD 1000 m² | Duży domek całoroczny i garaż | 45 min od Warszawy",
+    "url": "https://www.olx.pl/d/oferta/rod-1000-m-duzy-domek-caloroczny-i-garaz-45-min-od-warszawy-CID3-ID1arPcm.html"
+  },
+  "olx:1079418457": {
+    "area_m2": 390.0,
+    "description_snippet": "Szanowni Państwo, do zaoferowania mam piękną działkę na ROD Czerniakow. Działka ma powierzchnię 390 m² i jest ogrodzona. Dzięki dojrzałym drzewom, krzewom oraz żywopłotom zapewnia dużo zieleni, prywatności i przyjemnego cienia w cieplejsze dni. Na działce znajduje się domek letniskowy o konstrukcji ",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1079418457",
+    "last_notified_price_pln": 92000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów garden 'ROD Czerniaków' via keyword 'rod czerniakow'",
+    "matched_garden": "ROD Czerniaków",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 92000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 92000.0,
+    "price_raw": "92 000 zł",
+    "published_at": "2026-06-13T11:46:14+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD Czerniakow",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-czerniakow-CID3-ID1b3837.html"
+  },
+  "olx:1085123742": {
+    "area_m2": 537.0,
+    "description_snippet": "Na sprzedaż prawo do użytkowania atrakcyjnej działki ROD o powierzchni 537 m², położonej na terenie Siekierskich Rodzinnych Ogrodach Działkowych przy ul. Nadrzecznej (Dolny Mokotów) w Warszawie. Działka jest przestronna, równa i daje wiele możliwości aranżacji – zarówno jako miejsce do wypoczynku, j",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1085123742",
+    "last_notified_price_pln": 48000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów garden 'ROD Siekierki' via keyword 'rod siekierki'",
+    "matched_garden": "ROD Siekierki",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 48000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 48000.0,
+    "price_raw": "48 000 zł",
+    "published_at": "2026-07-13T11:21:18+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD 500 m² – Warszawa, ROD SIEKIERKI, ul. Nadrzeczna",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-500-m-warszawa-rod-siekierki-ul-nadrzeczna-CID3-ID1br4fQ.html"
+  },
+  "olx:1090741918": {
+    "area_m2": 300.0,
+    "description_snippet": "Wyjątkowo zadbana działka ROD Paluch Miejski z nowym, piętrowym domkiem drewnianym – idealne miejsce na odpoczynek, spotkania z rodziną i własną aranżację. Na sprzedaż prawo do użytkowania działki ROD o powierzchni 300 m², położonej na terenie ROD Paluch Miejski. Działka jest ogrodzona, bardzo zadba",
+    "district_match": "warszawa_unassigned",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1090741918",
+    "last_notified_price_pln": 95000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Jaworowa",
+    "match_reason": "Warsaw ROD listing without specific district (unassigned)",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 95000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 95000.0,
+    "price_raw": "95 000 zł",
+    "published_at": "2026-08-12T14:08:19+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "ROD Paluch Miejski Warszawa | 300 m2 | piętrowy domek 30 m2 + antresola",
+    "url": "https://www.olx.pl/d/oferta/rod-paluch-miejski-warszawa-300-m2-pietrowy-domek-30-m2-antresola-CID3-ID1bODNA.html"
+  },
+  "olx:1092379375": {
+    "area_m2": 800.0,
+    "description_snippet": "Na sprzedaż dwie połączone działki ROD w Sękocinie pod Warszawą. Pomiędzy działkami nie ma ogrodzenia, tworzą jedną dużą działkę. Powierzchnia łączna dwóch działek około 800m2. Działki są mocno zarośnięte i gotowe do strzyżenia i uformowania wedle upodobania przez nowego nabywcę. Na każdej z działek",
+    "district_match": "warszawa_unassigned",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1092379375",
+    "last_notified_price_pln": 77000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Sękocin Las",
+    "match_reason": "Warsaw ROD listing without specific district (unassigned)",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 77000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 77000.0,
+    "price_raw": "77 000 zł",
+    "published_at": "2026-08-19T16:31:11+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD - Sękocin - podwójna - Słomin",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-sekocin-podwojna-slomin-CID3-ID1bWwMb.html"
+  },
+  "olx:1095637565": {
+    "area_m2": 400.0,
+    "description_snippet": "Odstąpię prawa do działki ROD 400m 2 przy ul. Sobieskiego w Warszawie. To zielone, spokojne miejsce wśród ogródków działkowych, niedaleko nowej linii tramwajowej /mokotów/. Na działce znajduje się domek drewniany z przestronnym zadaszonym tarasem, doskonałym na rodzinne spotkania. Domek gotowy do uż",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1095637565",
+    "last_notified_price_pln": 95000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 95000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 95000.0,
+    "price_raw": "95 000 zł",
+    "published_at": "2026-09-02T15:34:58+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "działka rekreacyjna",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rekreacyjna-CID3-ID1c9bnD.html"
+  },
+  "olx:1100372285": {
+    "area_m2": 500.0,
+    "description_snippet": "DZIAŁKA W WYJĄTKOWEJ LOKALIZACJI – POZNAŃ, UL. WRZESIŃSKA – ROD KAJKA Cena: 99 000 zł – do rozsądnej negocjacji Na sprzedaż działka o powierzchni ok. 500 m², położona na terenie ROD Kajka przy ul. Wrzesińskiej w Poznaniu. Ogromnym atutem jest lokalizacja – bardzo blisko Malty i Nowego Zoo, a jednocz",
+    "district_match": "warszawa_unassigned",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1100372285",
+    "last_notified_price_pln": 99000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Poznań, Warszawskie",
+    "match_reason": "Warsaw ROD listing without specific district (unassigned)",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 99000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 99000.0,
+    "price_raw": "99 000 zł",
+    "published_at": "2026-09-23T22:28:15+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Ogrodki dzialkowe Rod",
+    "url": "https://www.olx.pl/d/oferta/ogrodki-dzialkowe-rod-CID3-ID1ct365.html"
+  },
+  "olx:1106065256": {
+    "area_m2": 35.0,
+    "description_snippet": "Wyjątkowa działka ROD Szczęśliwice – ok. 500 m², domek 35 m² z antresolą, kominkiem i piwnicą – Warszawa Na sprzedaż prawa do pięknie zagospodarowanej działki rekreacyjnej o powierzchni około 490–500 m², położonej na terenie ROD Szczęśliwice w Warszawie, w sąsiedztwie Parku Szczęśliwickiego. To wyją",
+    "district_match": "ochota",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1106065256",
+    "last_notified_price_pln": 265000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Ochota",
+    "match_reason": "Matched Ochota garden 'ROD Fort Szczęśliwice' via keyword 'rod szczesliwice'",
+    "matched_garden": "ROD Fort Szczęśliwice",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 265000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 265000.0,
+    "price_raw": "265 000 zł",
+    "published_at": "2026-10-20T12:33:35+02:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka i Dom ROD Szczęśliwice",
+    "url": "https://www.olx.pl/d/oferta/dzialka-i-dom-rod-szczesliwice-CID3-ID1cQV6c.html"
+  },
+  "olx:1107640197": {
+    "area_m2": 324.0,
+    "description_snippet": "Działka o pow. 330 m (2) położona na Ursynowskiej 165, stary domek drewniany.",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1107640197",
+    "last_notified_price_pln": 43000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 43000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 43000.0,
+    "price_raw": "43 000 zł",
+    "published_at": "2026-10-25T20:34:07+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "prawo dzierżawy do działki w ROD",
+    "url": "https://www.olx.pl/d/oferta/prawo-dzierzawy-do-dzialki-w-rod-CID3-ID1cXxOt.html"
+  },
+  "olx:1108518908": {
+    "area_m2": 300.0,
+    "description_snippet": "Sprzedam prawa do działki ROD – 300 m²– Wolica k. Nadarzyna ul. Ogrodnicza cena 70 000 zł Mam do zaoferowania przeniesienie praw do działki o powierzchni 300 m² , położonej na terenie ROD „Wolica” tuż przy trasie S8, 18 km od Warszawy. Działka znajduje się w doskonałej lokalizacji – ciche, zielone o",
+    "district_match": "warszawa_unassigned",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1108518908",
+    "last_notified_price_pln": 70000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Wolica",
+    "match_reason": "Warsaw ROD listing without specific district (unassigned)",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 70000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 70000.0,
+    "price_raw": "70 000 zł",
+    "published_at": "2026-10-29T13:24:44+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD  !!!",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-CID3-ID1d1epe.html"
+  },
+  "olx:1109136420": {
+    "area_m2": 300.0,
+    "description_snippet": "Odstąpię prawo do uzytkowania działki o powierzchni 300m2. Teren: Ogrody działkowe Idylla ul. Augustówki (obok TVN wiertnicza). Okolica cicha i spokojna a jednocześnie z dobrą komunikacją do wielu dzielnic Warszawy. Co ważne w planach zagospodarowania przestrzennego nie planuje się tu żadnych inwest",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1109136420",
+    "last_notified_price_pln": 24900.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 24900.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 24900.0,
+    "price_raw": "24 900 zł",
+    "published_at": "2026-11-01T11:48:40+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD Idylla 300m Mokotów/Wilanów ul. Augustówka obok TVN (wiertnicza) Ogródek Działkowy Warszawa",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-idylla-300m-mokotow-wilanow-ul-augustowka-obok-tvn-wiertnicza-ogrodek-dzialkowy-warszawa-CID3-ID1d3P36.html"
+  },
+  "olx:1111926504": {
+    "area_m2": 400.0,
+    "description_snippet": "Sprzedam prawo do użytkowania działki rekreacyjnej na terenie Rodzinnych Ogrodów Działkowych (ROD) na Czerniakowie. To idealne miejsce na odpoczynek od miejskiego zgiełku z doskonałym dojazdem. Najważniejsze informacje o działce: Powierzchnia: 400 m² – ustawna, zadbana i w pełni ogrodzona, co zapewn",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1111926504",
+    "last_notified_price_pln": 58000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów garden 'ROD Czerniaków' via keyword 'czerniakow'",
+    "matched_garden": "ROD Czerniaków",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 58000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 58000.0,
+    "price_raw": "58 000 zł",
+    "published_at": "2026-11-13T15:06:53+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Sprzedam zadbaną działkę ROD 400 m² – Czerniaków, drewniany domek, prąd i woda",
+    "url": "https://www.olx.pl/d/oferta/sprzedam-zadbana-dzialke-rod-400-m-czerniakow-drewniany-domek-prad-i-woda-CID3-ID1dfvSs.html"
+  },
+  "olx:1112281913": {
+    "area_m2": 448.0,
+    "description_snippet": "Na sprzedaż dom letniskowy o łącznej powierzchni 70,5 m2 ( parter 35m2, poddasze plus 9 m2 weranda) położony w Warszawie przy ul. Żwirki i Wigury na ogródkach działkowych. Parter składający się z przestronnej werandy, prowadzącej do głównego pokoju dziennego z aneksem kuchennym. To idealne miejsce n",
+    "district_match": "ochota",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:1112281913",
+    "last_notified_price_pln": 359000.0,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa",
+    "match_reason": "Matched Ochota garden 'ROD im. Żwirki i Wigury' via keyword 'rod zwirki i wigury'",
+    "matched_garden": "ROD im. Żwirki i Wigury",
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [
+      {
+        "price_pln": 359000.0,
+        "timestamp": "2026-11-15T21:16:31.161152+00:00"
+      }
+    ],
+    "price_pln": 359000.0,
+    "price_raw": "359 000 zł",
+    "published_at": "2026-11-15T12:51:45+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Działka ROD Żwirki i Wigury domek o wysokim standardzie",
+    "url": "https://www.olx.pl/d/oferta/dzialka-rod-zwirki-i-wigury-domek-o-wysokim-standardzie-CID3-ID1dh1kR.html"
+  },
+  "olx:807238890": {
+    "area_m2": null,
+    "description_snippet": "Jak potrzebujesz zrobić porządki na działce to bardzo dobrze trafiłeś. Oferujemy : - rozbiórki altanek, szop, garaży, domków letniskowych, stodół, szklarni i innych, - wywóz gruzu, złomu, drewna, liści, trawy, itp., - porządkowanie działek pod inwestycje, budowe, - sprzątanie zaniedbanych działek, -",
+    "district_match": "mokotow",
+    "first_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "id": "olx:807238890",
+    "last_notified_price_pln": null,
+    "last_seen_at": "2026-11-15T21:16:31.161152+00:00",
+    "location_raw": "Warszawa, Mokotów",
+    "match_reason": "Matched Mokotów location/street 'mokotow'",
+    "matched_garden": null,
+    "notified_at": "2026-11-15T21:16:35.260357+00:00",
+    "price_history": [],
+    "price_pln": null,
+    "price_raw": null,
+    "published_at": "2023-01-11T10:12:01+01:00",
+    "source": "olx",
+    "times_seen": 1,
+    "title": "Rozbiórki altan ROD, Wywóz, Czyszczenie działek, Wycinka drzew",
+    "url": "https://www.olx.pl/d/oferta/rozbiorki-altan-rod-wywoz-czyszczenie-dzialek-wycinka-drzew-CID4371-IDSD5I6.html"
+  }
+}
