@@ -2,7 +2,7 @@
 
 ## 1. Confirmed Mokotów & Ochota ROD Listings
 
-_No new confirmed listings for Mokotów or Ochota._
+- **[OCHOTA]** **ROD im. Żwirki i Wigury** — [Żwirki i Wigury domek na działce ROD o wysokim standardzie](https://www.olx.pl/d/oferta/zwirki-i-wigury-domek-na-dzialce-rod-o-wysokim-standardzie-CID3-ID1ddqhu.html) — 359,000 PLN | 70 m² (5,129 PLN/m²) | source: `olx` | loc: Warszawa _(match: Matched Ochota garden 'ROD im. Żwirki i Wigury' via keyword 'zwirki i wigury')_
 
 ## 2. Price Drops on Previously Seen Listings
 
@@ -16,8 +16,8 @@ _No unassigned Warsaw listings._
 ### Run Statistics
 
 - **Sources scanned:** olx, otodom, sprzedajemy
-- **Total scanned:** 195
-- **New count:** 0 (Confirmed Mokotów/Ochota: 0, Unassigned Warsaw: 0)
+- **Total scanned:** 196
+- **New count:** 1 (Confirmed Mokotów/Ochota: 1, Unassigned Warsaw: 0)
 - **Price drops:** 0
 - **Warnings:** 1
   - ⚠️ ai_enrich: github_models enrichment failed (GitHub Models API call failed: <urlopen error [Errno -2] Name or service not known>); falling back to keyword matcher
