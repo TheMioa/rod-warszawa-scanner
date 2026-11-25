@@ -16,7 +16,7 @@ _No unassigned Warsaw listings._
 ### Run Statistics
 
 - **Sources scanned:** olx, otodom, sprzedajemy
-- **Total scanned:** 180
+- **Total scanned:** 178
 - **New count:** 1 (Confirmed Mokotów/Ochota: 1, Unassigned Warsaw: 0)
 - **Price drops:** 0
 - **Warnings:** 1
