@@ -39,3 +39,4 @@
 {"timestamp": "2026-11-27T18:36:20.261447+00:00", "mode": "digest", "total_scanned": 165, "new_count": 3, "price_drops_count": 0, "sources_scanned": ["olx", "otodom", "sprzedajemy"], "warnings_count": 1}
 {"timestamp": "2026-11-27T23:05:18.123996+00:00", "mode": "scan-only", "total_scanned": 166, "new_count": 0, "price_drops_count": 0, "sources_scanned": ["olx", "otodom", "sprzedajemy"], "warnings_count": 1}
 {"timestamp": "2026-11-28T11:08:21.440615+00:00", "mode": "scan-only", "total_scanned": 167, "new_count": 0, "price_drops_count": 0, "sources_scanned": ["olx", "otodom", "sprzedajemy"], "warnings_count": 1}
+{"timestamp": "2026-11-28T17:16:22.953923+00:00", "mode": "digest", "total_scanned": 169, "new_count": 0, "price_drops_count": 0, "sources_scanned": ["olx", "otodom", "sprzedajemy"], "warnings_count": 1}
